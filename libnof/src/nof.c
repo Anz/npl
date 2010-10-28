@@ -2,153 +2,192 @@
 #include "util.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
-nof_t* nof_create(size_t data_size, size_t text_size) {
-    // alloc nof
-    nof_t* nof = (nof_t*)malloc(sizeof(nof_t));
-    if (nof == NULL) {
-        return NULL;
-    }
+// read segment
+char* read_segment(FILE* file, size_t start, size_t size) {
+    char* segment = malloc(size);
+    memset(segment, 0, size);
 
-    // set header
-    nof->file_version = NOF_FILE_VERSION;
-    nof->bytecode_version = NOF_BYTECODE_VERSION;
-    list_init(&nof->symbols, sizeof(nof_symbol_t));
-    nof->data_size = data_size;
-    nof->text_size = text_size;
+    // jump to symbol section
+    fseek(file, start, SEEK_SET);
 
-    // alloc data
-    nof->data = (char*)calloc(data_size, sizeof(char));
-    if (nof->data == NULL) {
-        list_release(&nof->symbols);
-        free(nof);
-        return NULL;
-    }
-    memset(nof->data, 0, data_size);
+    // read segment
+    fread(segment, sizeof(char), size, file);
 
-    // alloc text
-    nof->text = (char*)calloc(text_size, sizeof(char));
-    if (nof->text == NULL) {
-        list_release(&nof->symbols);
-        free(nof->data);
-        free(nof);
-        return NULL;
-    }
-    memset(nof->text, 0, text_size);
-
-    return nof;
+    return segment;
 }
 
-nof_t* nof_open(FILE* file) {
-    // file size
-    fseek(file, 0L, SEEK_END);
-    size_t file_size = ftell(file);
-    fseek(file, 0L, SEEK_SET);
-    if (file_size < NOF_HEADER_SIZE) {
-        return NULL;
-    }
-
-    // load header
-    char header[NOF_HEADER_SIZE];
-    fread(header, sizeof(char), NOF_HEADER_SIZE, file);
-
-    // check magic number
-    int magic_number = swap_endian(*((int*)header));
-    if (magic_number != NOF_MAGIC_NUMBER) {
-        return NULL;
-    }
-
-    // init nof
-    nof_t* nof = malloc(sizeof(nof_t));
-    nof->file_version = swap_endian(((int*)header)[1]);
-    nof->bytecode_version = swap_endian(((int*)header)[2]);
-    size_t symbol_size = swap_endian(((int*)header)[3]);
-    nof->data_size = swap_endian(((int*)header)[4]);
-    nof->text_size = swap_endian(((int*)header)[5]);
-
-    // check size
-    size_t segment_size = NOF_HEADER_SIZE + symbol_size + nof->data_size + nof->text_size;
-    if (file_size != segment_size) {
-        return NULL;
-    }
-
-    // read symbols
-    char symbols[symbol_size];
-    fread(symbols, sizeof(char), symbol_size, file);
-
-
-    // data init
-    nof->data = malloc(nof->data_size);
-    fread(nof->data, sizeof(char), nof->data_size, file);
-
-    // text init
-    nof->text = malloc(nof->text_size);
-    fread(nof->text, sizeof(char), nof->text_size, file);
-
-    // init symbols
-    list_init(&nof->symbols, sizeof(nof_symbol_t));
-    for(int i = 0; i+NOF_SYMBOL_NAME+4 <= symbol_size; i+=NOF_SYMBOL_NAME+4) {
-        nof_symbol_t symbol;
-        symbol.pointer = nof->text + swap_endian(*((int*)&symbols[i]));
-        memcpy(symbol.name, &symbols[i+4], NOF_SYMBOL_NAME);
-        list_add(&nof->symbols, &symbol);
-    }
-
-    return nof;
+// get info from headre
+unsigned int get_header_info(char* header, unsigned int index) {
+    int* pointer = (int*)&header[index];
+    unsigned int value = swap_endian(*pointer);
+    return value;
 }
 
-unsigned int nof_symbol_pointer_convert(nof_t* nof, void* pointer) {
-    unsigned int addr = (unsigned int)pointer;
-    addr -= (unsigned int)nof->text;
-    return swap_endian(addr);
+// read header
+nof_header_t nof_read_header(FILE* file) {
+    nof_header_t header;
+
+    // segment
+    char* segment = read_segment(file, 0, NOF_HEADER_SIZE);
+
+    // init header
+    header.magic_number        = get_header_info(segment, NOF_MAGIC_NUMBER_INDEX);
+    header.container_version   = get_header_info(segment, NOF_CONTAINER_VERSION_INDEX);
+    header.content_version     = get_header_info(segment, NOF_CONTENT_VERSION_INDEX);
+    header.symbol_segment_size = get_header_info(segment, NOF_SYMBOL_SIZE_INDEX);
+    header.data_segment_size   = get_header_info(segment, NOF_DATA_SIZE_INDEX);
+    header.text_segment_size   = get_header_info(segment, NOF_TEXT_SIZE_INDEX);
+
+    return header;
 }
 
-void nof_write(nof_t* nof, FILE* file) {
-    // calculate symbol size
-    size_t symbol_size = nof->symbols.count * (NOF_SYMBOL_NAME+4);
+
+// read symbol section
+char* nof_read_symbol_segment(FILE* file, nof_header_t header) {
+    size_t start = NOF_HEADER_SIZE;
+    size_t size = header.symbol_segment_size;
+    return read_segment(file, start, size);
+}
+
+// read data section
+char* nof_read_data_segment(FILE* file, nof_header_t header) {
+    size_t start = NOF_HEADER_SIZE + header.symbol_segment_size;
+    size_t size = header.data_segment_size;
+    return read_segment(file, start, size);
+}
+
+// read text section
+char* nof_read_text_segment(FILE* file, nof_header_t header) {
+    size_t start = NOF_HEADER_SIZE + header.symbol_segment_size + header.data_segment_size;
+    size_t size = header.text_segment_size;
+    return read_segment(file, start, size);
+}
+
+// advanced read
+list_t nof_read_symbols(char* segment, size_t size) {
+    list_t symbols;
+    list_init(&symbols, sizeof(nof_symbol_t));
+
+    // for security reason overwrite last byte with '\0'
+    segment[size-1] = '\0';
+
+    char* pointer = segment;
+    char* end = segment + size;
+    while(pointer < end) {
+        // new symbol
+        nof_symbol_t* symbol = (nof_symbol_t*)malloc(sizeof(nof_symbol_t));
+
+        // set pointer
+        symbol->pointer = *(unsigned int*)pointer;
+        pointer += NOF_ADDR_SIZE;
+
+        // set name
+        size_t len = strlen(pointer) + 1;
+        symbol->name = malloc(len);
+        strcpy(symbol->name, pointer);
+        pointer += len;
+
+        list_add(&symbols, symbol);
+    }
+
+    return symbols;
+}
+
+// parse symbol
+int nof_read_symbol(char* segment, size_t size, nof_symbol_t* symbol) {
+    static char* start;
+    static char* end;
+
+    if (end != segment + size) {
+        start = segment;
+        end = segment + size;
+    }
+
+    if (end - start > 4) {
+        symbol->pointer = swap_endian(*(unsigned int*)start);
+        symbol->name = start + 4;
+        start += 4 + strlen(symbol->name) + 1;
+        return 1;
+    } else {
+        start = NULL;
+        end = NULL;
+        return 0;
+    }
+}
+
+// write symbol segment
+void nof_write_symbol(char* segment, nof_symbol_t symbol) {
+    static char* start;
+    static char* pointer;
+
+    if (start != segment) {
+        start = segment;
+        pointer = segment;
+    }
+
+    symbol.pointer = swap_endian(symbol.pointer);
+    memcpy(pointer, &symbol.pointer, 4);
+    strcpy(pointer+4, symbol.name);
+    pointer += 4 + strlen(symbol.name) + 1;
+}
+
+// write to file
+void nof_write_segment(FILE* file, nof_header_t header, char* symbol, char* data, char* text) {
+    // handle endian
+    unsigned int magic_number      = swap_endian(header.magic_number);
+    unsigned int container_version = swap_endian(header.container_version);
+    unsigned int content_version   = swap_endian(header.content_version);
+    size_t symbol_segment_size     = swap_endian(header.symbol_segment_size);
+    size_t data_segment_size       = swap_endian(header.data_segment_size);
+    size_t text_segment_size       = swap_endian(header.text_segment_size);
 
     // write header
-    char header[NOF_HEADER_SIZE];
-    memset(header, 0xBB, NOF_HEADER_SIZE);
-    int* header_i = (int*)header;
-    header_i[0] = swap_endian(NOF_MAGIC_NUMBER);
-    header_i[1] = swap_endian(nof->file_version);
-    header_i[2] = swap_endian(nof->bytecode_version);
-    header_i[3] = swap_endian(symbol_size);
-    header_i[4] = swap_endian(nof->data_size);
-    header_i[5] = swap_endian(nof->text_size);
-    fwrite(header, sizeof(char), NOF_HEADER_SIZE, file);
+    fwrite(&magic_number, 4, 1, file);
+    fwrite(&container_version, 4, 1, file);
+    fwrite(&content_version, 4, 1, file);
+    fwrite(&symbol_segment_size, 4, 1, file);
+    fwrite(&data_segment_size, 4, 1, file);
+    fwrite(&text_segment_size, 4, 1, file);
 
     // write symbol
-    list_node iterator =  list_first(&nof->symbols);
+    fwrite(symbol, 1, header.symbol_segment_size, file);
+
+    // write data
+    fwrite(data, 1, header.data_segment_size, file);
+
+    // write text
+    fwrite(text, 1, header.text_segment_size, file);
+}
+
+// advanced write
+char* nof_write_to_buffer(list_t symbols, size_t* size) {
+    *size = 0;
+
+    // count size
+    list_node iterator = list_first(&symbols);
     while (iterator != NULL) {
         nof_symbol_t* symbol = (nof_symbol_t*)list_get(iterator);
-        //unsigned int pointer = swap_endian((unsigned int)(symbol->pointer - ((void*)nof->text)));
-        //unsigned int pointer = swap_endian((unsigned int)(symbol->pointer));
-        unsigned int pointer = nof_symbol_pointer_convert(nof, symbol->pointer);
-        fwrite(&pointer, 4, 1, file);
-        fwrite(symbol->name, sizeof(char), NOF_SYMBOL_NAME, file);
+        *size += NOF_ADDR_SIZE;
+        *size += strlen(symbol->name) + 1;
         iterator = list_next(iterator);
     }
 
-    // write data
-    fwrite(nof->data, sizeof(char), nof->data_size, file);
+    // write buffer
+    char* buffer = malloc(*size);
+    void* pointer = buffer;
+    iterator = list_first(&symbols);
+    while (iterator != NULL) {
+        nof_symbol_t* symbol = (nof_symbol_t*)list_get(iterator);
+        memcpy(pointer, &symbol->pointer, NOF_ADDR_SIZE);
+        pointer += NOF_ADDR_SIZE;
+        size_t len = strlen(symbol->name) + 1;
+        strcpy(pointer, symbol->name);
+        pointer += len;
 
-    // write text
-    fwrite(nof->text, sizeof(char), nof->text_size, file);
-}
+        iterator = list_next(iterator);
+    }
 
-void nof_close(nof_t* nof) {
-    list_release(&nof->symbols);
-    free(nof->data);
-    free(nof->text);
-    free(nof);
-}
-
-void nof_symbol_add(nof_t* nof, void* pointer, char* name) {
-    nof_symbol_t symbol;
-    memset(symbol.name, 0, NOF_SYMBOL_NAME+1);
-    strncpy(symbol.name, name, NOF_SYMBOL_NAME);
-    symbol.pointer = pointer;
-    list_add(&nof->symbols, &symbol);
+    return buffer;
 }

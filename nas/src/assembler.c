@@ -1,100 +1,95 @@
 #include "assembler.h"
 #include <string.h>
 
-#define ASM_SEGMENT_NONE 0x00
-#define ASM_SEGMENT_TEXT 0x01
-#define ASM_SEGMENT_DATA 0x02
+#define READ_BUFFER_SIZE 500
 
-void assembler_read_line(char* line, size_t size);
-int min(int a, int b);
+asm_info_t asm_collection_info(FILE* file) {
+    asm_info_t info;
+    info.data_section = 0;
+    info.text_section = 0;
+    info.symbol_count = 0;
+    info.symbol_segment_size = 0;
+    info.instruction_count = 0;
+    info.text_segment_size = 0;
 
-int assembler_next_segment();
-int assembler_text_next_functon(nof_t* nof);
+    // jump to start
+    fseek(file, 0, SEEK_SET);
 
-int assembly_index = 0;
-int assembly_line = 0;
-int assembly_text_line = 0;
-char*  assembly_content = 0;
-size_t assembly_size = 0;
+    char line[READ_BUFFER_SIZE];
+    while(!feof(file)) {
+        fgets(line, READ_BUFFER_SIZE, file);
 
-void assembler(nof_t* nof, char* assembly, size_t size) {
-
-    assembly_content = assembly;
-    assembly_size = size;
-
-    int segment = assembler_next_segment();
-    while (segment != -1) {
-        switch (segment) {
-            case ASM_SEGMENT_TEXT: {
-                printf("text segment\n");
-                while(assembler_text_next_functon(nof) != 0);
+        switch(line[0]) {
+            // ingore comment
+            case ASM_COMMENT: continue;
+            // on segment
+            case ASM_SEGMENT: {
+                if (memcmp(ASM_DATA_SEGMENT, &line[1], strlen(ASM_DATA_SEGMENT)) == 0) {
+                    info.data_section = ftell(file);
+                } else if (memcmp(ASM_TEXT_SEGMENT, &line[1], strlen(ASM_TEXT_SEGMENT)) == 0) {
+                    info.text_section = ftell(file);
+                }
                 break;
             }
-            case ASM_SEGMENT_DATA: {
-                printf("data segment\n");
+            // on instruction
+            case ASM_INSTRUCTION: {
+                info.instruction_count++;
                 break;
             }
+            // on function
             default: {
-                printf("wrong segment\n");
+                if (96 < line[0] && line[0] < 123) { // function
+                    info.symbol_count++;
+                    info.symbol_segment_size += 4 + (strchr(line, ':') - line) + 1;
+                }
+                break;
             }
         }
-
-        segment = assembler_next_segment();
     }
+
+    info.text_segment_size = info.instruction_count * 5;
+    return info;
 }
 
-int assembler_next_segment() {
-    char line[255];
-    assembler_read_line(line, 255);
-    while(assembly_index < assembly_size) {
-        if (strlen(line) > 0 && line[0] == '.') {
-            if (memcmp("data", &line[1], 4) == 0) {
-                return ASM_SEGMENT_DATA;
-            } else if (memcmp("text", &line[1], 4) == 0) {
-                assembly_text_line = assembly_line;
-                return ASM_SEGMENT_TEXT;
-            } else {
-                return ASM_SEGMENT_NONE;
+void asm_fill_segment(FILE* file, char* symbol_segment, char* text_segment, asm_info_t info) {
+    // jump to .text
+    fseek(file, info.text_section, SEEK_SET);
+
+    unsigned int instruction_index = 0;
+    //char* symbol_pointer = symbol;
+
+    char line[READ_BUFFER_SIZE];
+    while(!feof(file)) {
+        fgets(line, READ_BUFFER_SIZE, file);
+
+        switch (line[0]) {
+            // ignore comment
+            case ASM_COMMENT: continue;
+            // abort on new segment
+            case ASM_SEGMENT: return;
+            // on instruction
+            case ASM_INSTRUCTION: {
+                char* mnemonic = strtok(line, "\t ");
+                char instruction = bc_asm2op(mnemonic);
+                text_segment[instruction_index] = instruction;
+                unsigned int addr = 0xAAAAAAAA;
+                memcpy(&text_segment[instruction_index+1], &addr, 4);
+                instruction_index += 5;
+                break;
+            }
+            // on function
+            default: {
+                if (96 < line[0] && line[0] < 123) { // function
+                    nof_symbol_t symbol;
+                    symbol.pointer = instruction_index;
+                    size_t len = (strchr(line, ':') - line) + 1;
+                    char name[len];
+                    memcpy(name, line, len);
+                    name[len-1] = '\0';
+                    symbol.name = name;
+                    nof_write_symbol(symbol_segment, symbol);
+                }
             }
         }
-
-        assembler_read_line(line, 255);
     }
-    return -1;
-}
-
-int assembler_text_next_functon(nof_t* nof) {
-    char line[255];
-    assembler_read_line(line, 255);
-    while(assembly_index < assembly_size) {
-        if (strlen(line) > 0 && line[0] != ' ' && line[0] != '\t') {
-            nof_symbol_add(nof, nof->text + assembly_line - assembly_text_line, line);
-            return 1;
-        }
-
-        assembler_read_line(line, 255);
-    }
-    return 0;
-}
-
-void assembler_read_line(char* line, size_t size) {
-    if (assembly_index >= assembly_size) {
-        return;
-    }
-
-    int length;
-    for (length = 0; assembly_index+length < assembly_size && assembly_content[assembly_index+length] != '\n'; length++);
-    memset(line, 0, size);
-    memcpy(line, &assembly_content[assembly_index], min(length, size));
-    line[size-1] = '\0';
-    assembly_index += length + 1;
-    assembly_line++;
-}
-
-int min(int a, int b) {
-    if (a < b) {
-        return a;
-    }
-
-    return b;
 }

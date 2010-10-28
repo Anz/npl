@@ -2,87 +2,72 @@
 #include <stdlib.h>
 #include <string.h>
 #include <nof.h>
-#include "bytecode.h"
+#include <bytecode.h>
 #include "assembler.h"
 
 
 
 void print_usage();
-size_t get_file_size(FILE* file);
 
 int main(int argc, char* argv[]) {
-
+    // usage
     if (argc < 3) {
         print_usage();
         return 0;
     }
 
-    // load assembly
-    char* assembly_path = argv[1];
-    FILE* assembly = fopen(assembly_path, "r");
-    if (assembly == NULL) {
-        printf("file format wrong: %s\n", assembly_path);
-        return 1;
-        }
-
-    // load bytecode
-    char* bytecode_path = argv[2];
-    FILE* bytecode = fopen(bytecode_path, "w");
-    if (bytecode == NULL) {
-        printf("file format wrong: %s\n", bytecode_path);
+    // input
+    char* input_path = argv[1];
+    FILE* input = fopen(input_path, "r");
+    if (input == NULL) {
+        fprintf(stderr, "can not open file", input_path);
         return 1;
     }
 
-    // get assembly file size
-    size_t assembly_size = get_file_size(assembly);
-
-    // load stuff and write
-    char* assembly_content = malloc(assembly_size+1);
-    fread(assembly_content, sizeof(char), assembly_size, assembly);
-    fclose(assembly);
-    assembly = NULL;
-    int opcodes_count = 1;
-    for (int i = 0; i < assembly_size; i++) {
-        if (assembly_content[i] == '\n') {
-            opcodes_count++;
-        }
-    }
-    //assembly_content[assembly_size] = '\0';
-
-    // init nof
-    nof_t* nof = nof_create(16, opcodes_count);
-    if (nof == NULL) {
-        printf("fatal error: could not alloc nof_t memory");
+    // ouput
+    char* output_path = argv[2];
+    FILE* output = fopen(output_path, "w");
+    if (output == NULL) {
+        fprintf(stderr, "can not open file", output_path);
+        return 1;
     }
 
-    strcpy(nof->data, "1234567890123456");
+    // collection info from input
+    asm_info_t info = asm_collection_info(input);
 
-    // write text stuff
-    assembler(nof, assembly_content, assembly_size);
+    // show info
+    printf("data_section        = %u\n", info.data_section);
+    printf("text_section        = %u\n", info.text_section);
+    printf("symbol_count        = %u\n", info.symbol_count);
+    printf("symbol_segment_size = %u\n", info.symbol_segment_size);
+    printf("instruction_count   = %u\n", info.instruction_count);
+    printf("text_segment_size   = %u\n", info.text_segment_size);
 
-    nof_write(nof,bytecode);
-    fclose(bytecode);
-    bytecode = NULL;
+    // set header
+    nof_header_t header;
+    header.magic_number = NOF_MAGIC_NUMBER;
+    header.container_version = NOF_CONTAINER_VERSION;
+    header.content_version = BC_BYTECODE_VERSION;
+    header.symbol_segment_size = info.symbol_segment_size;
+    header.data_segment_size = 4;
+    header.text_segment_size = info.text_segment_size;
+    char buffer[4];
 
-    size_t symbol_size = nof->symbols.count * (NOF_SYMBOL_NAME+4);
-    printf("symbol size: %i\n", symbol_size);
-    printf("data size: %i\n", nof->data_size);
-    printf("text size: %i\n", nof->text_size);
-    printf("total size: %i\n", NOF_HEADER_SIZE+symbol_size+nof->data_size+nof->text_size);
+    // assembler
+    char symbol_segment[header.symbol_segment_size];
+    char text_segment[header.text_segment_size];
+    asm_fill_segment(input, symbol_segment, text_segment, info);
 
-    nof_close(nof);
-    nof = NULL;
-    printf("finished\n");
+    // write container
+    nof_write_segment(output, header, symbol_segment, buffer, text_segment);
+
+    free(symbol_segment);
+    fclose(input);
+    fclose(output);
+
     return 0;
 }
 
 void print_usage() {
     printf("usage\n");
-}
-
-size_t get_file_size(FILE* file) {
-    fseek(file, 0L, SEEK_END);
-    size_t file_size = ftell(file);
-    fseek(file, 0L, SEEK_SET);
-    return file_size;
 }
