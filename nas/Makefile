@@ -2,8 +2,7 @@ CC = gcc --std=99 -Wall
 
 all:
 	mkdir -p bin
-	cd bin
-	CC -I../include -lnbc -lnof -onas ../src/*.c
+	${CC} -I../include -L../bin -lnbc -lnof -obin/nas src/*.c
 
 clean:
 	rm bin
