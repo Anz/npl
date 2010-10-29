@@ -38,9 +38,6 @@ char* nof_read_symbol_segment(FILE* file, nof_header_t header);
 char* nof_read_data_segment(FILE* file, nof_header_t header);
 char* nof_read_text_segment(FILE* file, nof_header_t header);
 
-// advanced read
-list_t nof_read_symbols(char* segment, size_t size);
-
 // parse symbol segment
 int nof_read_symbol(char* segment, size_t size, nof_symbol_t* symbol);
 
@@ -49,8 +46,5 @@ void nof_write_symbol(char* segment, nof_symbol_t symbol);
 
 // basic write
 void nof_write_segment(FILE* file, nof_header_t, char* symbol, char* data, char* text);
-
-// advanced write
-char* nof_write_to_buffer(list_t symbols, size_t* size);
 
 #endif

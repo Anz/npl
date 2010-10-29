@@ -1,5 +1,6 @@
 #include "assembler.h"
 #include <string.h>
+#include <bytecode.h>
 
 #define READ_BUFFER_SIZE 500
 

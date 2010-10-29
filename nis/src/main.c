@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <nof.h>
+#include <bytecode.h>
 
 void print_usage();
 
@@ -55,7 +56,7 @@ int main(int argc, char* argv[]) {
     nof_read_symbol(symbol_segment, header.symbol_segment_size, &symbol);
     for(int i = 0; i < header.text_segment_size; i += 5) {
         if (symbol.pointer == i) {
-            printf("%s\:\n", symbol.name);
+            printf("%s:\n", symbol.name);
             nof_read_symbol(symbol_segment, header.symbol_segment_size, &symbol);
         }
 

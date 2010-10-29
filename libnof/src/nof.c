@@ -65,36 +65,6 @@ char* nof_read_text_segment(FILE* file, nof_header_t header) {
     return read_segment(file, start, size);
 }
 
-// advanced read
-list_t nof_read_symbols(char* segment, size_t size) {
-    list_t symbols;
-    list_init(&symbols, sizeof(nof_symbol_t));
-
-    // for security reason overwrite last byte with '\0'
-    segment[size-1] = '\0';
-
-    char* pointer = segment;
-    char* end = segment + size;
-    while(pointer < end) {
-        // new symbol
-        nof_symbol_t* symbol = (nof_symbol_t*)malloc(sizeof(nof_symbol_t));
-
-        // set pointer
-        symbol->pointer = *(unsigned int*)pointer;
-        pointer += NOF_ADDR_SIZE;
-
-        // set name
-        size_t len = strlen(pointer) + 1;
-        symbol->name = malloc(len);
-        strcpy(symbol->name, pointer);
-        pointer += len;
-
-        list_add(&symbols, symbol);
-    }
-
-    return symbols;
-}
-
 // parse symbol
 int nof_read_symbol(char* segment, size_t size, nof_symbol_t* symbol) {
     static char* start;
@@ -161,33 +131,3 @@ void nof_write_segment(FILE* file, nof_header_t header, char* symbol, char* data
     fwrite(text, 1, header.text_segment_size, file);
 }
 
-// advanced write
-char* nof_write_to_buffer(list_t symbols, size_t* size) {
-    *size = 0;
-
-    // count size
-    list_node iterator = list_first(&symbols);
-    while (iterator != NULL) {
-        nof_symbol_t* symbol = (nof_symbol_t*)list_get(iterator);
-        *size += NOF_ADDR_SIZE;
-        *size += strlen(symbol->name) + 1;
-        iterator = list_next(iterator);
-    }
-
-    // write buffer
-    char* buffer = malloc(*size);
-    void* pointer = buffer;
-    iterator = list_first(&symbols);
-    while (iterator != NULL) {
-        nof_symbol_t* symbol = (nof_symbol_t*)list_get(iterator);
-        memcpy(pointer, &symbol->pointer, NOF_ADDR_SIZE);
-        pointer += NOF_ADDR_SIZE;
-        size_t len = strlen(symbol->name) + 1;
-        strcpy(pointer, symbol->name);
-        pointer += len;
-
-        iterator = list_next(iterator);
-    }
-
-    return buffer;
-}
