@@ -1,8 +1,11 @@
-CC = gcc --std=99 -Wall
+include ../Makefile.common
+
+LDFLAGS+= -lnbc -lnof
 
 all:
 	mkdir -p bin
-	${CC} -Iinclude -I../libnof/include -I../libnbc/include -L../bin -lnbc -lnof -obin/nis src/*.c
+	echo "ROOTDIR  ### $(CURDIR) - ${CURDIR}"
+	${CC} ${CFLAGS} -obin/nis src/*.c ${LDFLAGS}
 
 clean:
 	rm bin

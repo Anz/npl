@@ -1,11 +1,18 @@
+
 all:
+	echo ${CFLAGS}
 	mkdir -p bin
-	cd libnof; make
+	mkdir -p bin/include
+	make -C libnof
 	cp libnof/bin/lib*.a bin/
-	cd libnbc; make
+	cp libnof/include/*.h bin/include/
+	make -C libnbc
 	cp libnbc/bin/lib*.a bin/
-	cd nis; make
+	cp libnbc/include/*.h bin/include/
+	make -C nis
 	cp nis/bin/nis bin/
-	cd nas; make
+	make -C nas
 	cp nas/bin/nas bin/
-	
+
+clean:
+	rm -rf bin
