@@ -2,7 +2,7 @@
 #define ASSEMBLER_H_INCLUDED
 
 #include <stddef.h>
-#include <nof.h>
+#include "container.h"
 
 #define ASM_DATA_SEGMENT "data"
 #define ASM_TEXT_SEGMENT "text"

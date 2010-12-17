@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <nof.h>
-#include <bytecode.h>
-#include "assembler.h"
+#include "container.h"
+#include "bytecode.h"
+#include "assembly.h"
 
 
 
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
     char* input_path = argv[1];
     FILE* input = fopen(input_path, "r");
     if (input == NULL) {
-        fprintf(stderr, "can not open file", input_path);
+        fprintf(stderr, "can not open file: %s\n", input_path);
         return 1;
     }
 
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     char* output_path = argv[2];
     FILE* output = fopen(output_path, "w");
     if (output == NULL) {
-        fprintf(stderr, "can not open file", output_path);
+        fprintf(stderr, "can not open file: %s\n", output_path);
         return 1;
     }
 

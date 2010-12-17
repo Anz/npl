@@ -1,7 +1,7 @@
 #ifndef NOF_H
 #define NOF_H
 
-#include "list.h"
+//#include "list.h"
 #include <stddef.h>
 #include <stdio.h>
 
