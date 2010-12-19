@@ -61,7 +61,6 @@ int main(int argc, char* argv[]) {
     // write container
     nof_write_segment(output, header, symbol_segment, buffer, text_segment);
 
-    free(symbol_segment);
     fclose(input);
     fclose(output);
 
