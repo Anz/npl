@@ -47,7 +47,7 @@ void ctr_symbol_set_addr(ctr_segment_t segment, unsigned int index, ctr_addr add
 void ctr_symbol_get_name(ctr_segment_t segment, unsigned int index, char* name);
 void ctr_symbol_set_name(ctr_segment_t segment, unsigned int index, char* name);
 void ctr_symbol_resize_segment(ctr_segment_t* segment, unsigned int count);
-unsigned int ctr_symbol_find_by_addr(ctr_segment_t segment, ctr_addr addr);
+int ctr_symbol_find_by_addr(ctr_segment_t segment, ctr_addr addr);
 
 // text segment functions
 unsigned int ctr_text_count(ctr_segment_t segment);

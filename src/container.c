@@ -21,12 +21,6 @@ ctr_segment_t read_segment(FILE* file, size_t start, size_t size) {
     return segment;
 }
 
-// get info from headre
-unsigned int get_header_info(ctr_segment_t segment, unsigned int index) {
-    unsigned int value = *(unsigned int*)&segment.data[index];
-    return swap_endian(value);
-}
-
 // read header
 ctr_header_t ctr_read_header(FILE* file) {
     ctr_header_t header;
@@ -114,6 +108,18 @@ void ctr_symbol_resize_segment(ctr_segment_t* segment, unsigned int count) {
     if (segment->data == NULL) {
         segment->size = 0;
     }
+}
+
+// find symbol by addr
+int ctr_symbol_find_by_addr(ctr_segment_t segment, ctr_addr addr) {
+    unsigned int count = ctr_symbol_count(segment);
+    for (int i = 0; i < count; i++) {
+        ctr_addr to_compare = ctr_symbol_get_addr(segment, i);
+        if (to_compare == addr) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 // count all elements

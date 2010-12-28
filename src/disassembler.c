@@ -59,8 +59,17 @@ int main(int argc, char* argv[]) {
     ctr_segment_t text_segment = ctr_read_text_segment(file, header);
     unsigned int text_count = ctr_text_count(text_segment);
     for(unsigned int i = 0; i < text_count; i++) {
+        ctr_addr addr = i * BC_OPCODE_SIZE;
+        int symbol = ctr_symbol_find_by_addr(symbol_segment, addr);
         char instruction = ctr_text_get_instruction(text_segment, i);
-        printf("\t%s\n", bc_op2asm(instruction));
+
+        if (symbol != -1) {
+            char name[CTR_SYMBOL_NAME_SIZE+1];
+            ctr_symbol_get_name(symbol_segment, symbol, name);
+            printf("%s:\t%s\n", name, bc_op2asm(instruction));
+        } else {
+            printf("\t%s\n", bc_op2asm(instruction));
+        }
     }
     printf("\n");
 
