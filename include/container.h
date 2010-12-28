@@ -12,13 +12,6 @@
 #define CTR_SYMBOL_NAME_SIZE 512
 #define CTR_SYMBOL_SIZE 516
 
-#define CTR_MAGIC_NUMBER_INDEX 0
-#define CTR_CONTAINER_VERSION_INDEX 4
-#define CTR_CONTENT_VERSION_INDEX 8
-#define CTR_SYMBOL_SIZE_INDEX 12
-#define CTR_DATA_SIZE_INDEX 16
-#define CTR_TEXT_SIZE_INDEX 20
-
 // address type
 typedef unsigned int ctr_addr;
 

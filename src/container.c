@@ -33,16 +33,17 @@ ctr_header_t ctr_read_header(FILE* file) {
 
     // segment
     ctr_segment_t segment = read_segment(file, 0, CTR_HEADER_SIZE);
+    unsigned int* ptr = (unsigned int*)segment.data;
 
     // init header
-    header.magic_number        = get_header_info(segment, CTR_MAGIC_NUMBER_INDEX);
-    header.container_version   = get_header_info(segment, CTR_CONTAINER_VERSION_INDEX);
-    header.content_version     = get_header_info(segment, CTR_CONTENT_VERSION_INDEX);
-    header.symbol_segment_size = get_header_info(segment, CTR_SYMBOL_SIZE_INDEX);
-    header.data_segment_size   = get_header_info(segment, CTR_DATA_SIZE_INDEX);
-    header.text_segment_size   = get_header_info(segment, CTR_TEXT_SIZE_INDEX);
+    header.magic_number        = swap_endian(ptr[0]);
+    header.container_version   = swap_endian(ptr[1]); 
+    header.content_version     = swap_endian(ptr[2]);
+    header.symbol_segment_size = swap_endian(ptr[3]);
+    header.data_segment_size   = swap_endian(ptr[4]);
+    header.text_segment_size   = swap_endian(ptr[5]);
 
-    return header;
+   return header;
 }
 
 
@@ -108,12 +109,9 @@ void ctr_symbol_set_name(ctr_segment_t segment, unsigned int index, char* name) 
 
 // resize symbol segment by count of symbols
 void ctr_symbol_resize_segment(ctr_segment_t* segment, unsigned int count) {
-    char* old_segment = segment->data;
     segment->size = count * CTR_SYMBOL_SIZE;
-    segment->data = realloc(segment->data, segment->size);
+    segment->data = resize_memory(segment->data, segment->size);
     if (segment->data == NULL) {
-        free(old_segment);
-        segment->data = NULL;
         segment->size = 0;
     }
 }
@@ -125,12 +123,9 @@ unsigned int ctr_text_count(ctr_segment_t segment) {
 
 // resize text segment by count of instructon
 void ctr_text_resize_segment(ctr_segment_t* segment, unsigned int count) {
-    char* old_segment = segment->data;
     segment->size = count * BC_OPCODE_SIZE;
-    segment->data = realloc(segment->data, segment->size);
+    segment->data = resize_memory(segment->data, segment->size);
     if (segment->data == NULL) {
-        free(old_segment);
-        segment->data = NULL;
         segment->size = 0;
     }
 }
@@ -148,20 +143,17 @@ void ctr_text_set_instruction(ctr_segment_t segment, unsigned int index, char in
 // write to file
 void ctr_write_segment(FILE* file, ctr_segment_t symbol, ctr_segment_t data, ctr_segment_t text) {
     // handle endian
-    unsigned int magic_number      = swap_endian(CTR_MAGIC_NUMBER);
-    unsigned int container_version = swap_endian(CTR_CONTAINER_VERSION);
-    unsigned int content_version   = swap_endian(BC_BYTECODE_VERSION);
-    size_t symbol_segment_size     = swap_endian(symbol.size);
-    size_t data_segment_size       = swap_endian(data.size);
-    size_t text_segment_size       = swap_endian(text.size);
+    unsigned int header[] = { 
+        swap_endian(CTR_MAGIC_NUMBER),
+        swap_endian(CTR_CONTAINER_VERSION),
+        swap_endian(BC_BYTECODE_VERSION),
+        swap_endian(symbol.size),
+        swap_endian(data.size),
+        swap_endian(text.size) 
+    };
 
     // write header
-    fwrite(&magic_number, 4, 1, file);
-    fwrite(&container_version, 4, 1, file);
-    fwrite(&content_version, 4, 1, file);
-    fwrite(&symbol_segment_size, 4, 1, file);
-    fwrite(&data_segment_size, 4, 1, file);
-    fwrite(&text_segment_size, 4, 1, file);
+    fwrite(header, 1, sizeof(header), file);
 
     // write symbol
     fwrite(symbol.data, 1, symbol.size, file);

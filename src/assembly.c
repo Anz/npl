@@ -1,13 +1,10 @@
 #include <string.h>
 #include "assembly.h"
 #include "bytecode.h"
+#include "util.h"
 
 #define READ_BUFFER_SIZE 1024
 #define SEGMENT_BUFFER_SIZE 1024
-
-int isletter(char c) {
-    return 'a' <= c && c <= 'z';
-}
 
 void jump_to_text_seg(FILE* file) {
     char line[READ_BUFFER_SIZE];
@@ -15,13 +12,6 @@ void jump_to_text_seg(FILE* file) {
     while(!feof(file) && memcmp(line, ".text", 5) != 0)  {
         fgets(line, READ_BUFFER_SIZE, file);
     }
-}
-
-size_t min_s(size_t a, size_t b) {
-    if (a < b) {
-        return a;
-    }
-    return b;
 }
 
 void add_symbol(ctr_segment_t* symbol_segment, char* line, ctr_addr addr) {
