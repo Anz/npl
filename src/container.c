@@ -1,3 +1,4 @@
+#include "bytecode.h"
 #include "container.h"
 #include "util.h"
 #include <stdlib.h>
@@ -65,42 +66,71 @@ char* nof_read_text_segment(FILE* file, nof_header_t header) {
     return read_segment(file, start, size);
 }
 
-// parse symbol
-int nof_read_symbol(char* segment, size_t size, nof_symbol_t* symbol) {
-    static char* start;
-    static char* end;
+// calculate symbol count
+// symbol count = symbol size / (symbol addr size + symbol name size)
+unsigned int nof_symbol_count(nof_header_t header) {
+    return header.symbol_segment_size / NOF_SYMBOL_SIZE;
+}
 
-    if (end != segment + size) {
-        start = segment;
-        end = segment + size;
-    }
+// get symbol address from symbol segment by index
+ctr_addr nof_symbol_get_addr(char* segment, unsigned int index) {
+    ctr_addr* ptr = (ctr_addr*)&segment[index * NOF_SYMBOL_SIZE];
+    ctr_addr addr = *ptr;
+    return swap_endian(addr);
+}
 
-    if (end - start > 4) {
-        symbol->pointer = swap_endian(*(unsigned int*)start);
-        symbol->name = start + 4;
-        start += 4 + strlen(symbol->name) + 1;
-        return 1;
-    } else {
-        start = NULL;
-        end = NULL;
-        return 0;
+// get symbol address from symbol segment by index
+void nof_symbol_set_addr(char* segment, unsigned int index, ctr_addr addr) {
+    addr = swap_endian(addr);
+    ctr_addr* ptr = (ctr_addr*)&segment[index * NOF_SYMBOL_SIZE];
+    *ptr = addr;
+}
+
+// get symbol name from symbol segment by index
+void nof_symbol_get_name(char* segment, unsigned int index, char* name) {
+    memset(name, 0, NOF_SYMBOL_NAME_SIZE + 1);
+    char* ptr = &segment[index * NOF_SYMBOL_SIZE + NOF_ADDR_SIZE];
+    memcpy(name, ptr, NOF_SYMBOL_NAME_SIZE);
+}
+
+// set symbol name from symbol segment by index
+void nof_symbol_set_name(char* segment, unsigned int index, char* name) {
+    char* symbol_name = &segment[index * NOF_SYMBOL_SIZE + NOF_ADDR_SIZE];
+    memset(symbol_name, 0, NOF_SYMBOL_NAME_SIZE);
+    strncpy(symbol_name, name, NOF_SYMBOL_NAME_SIZE);
+}
+
+// resize symbol segment by count of symbols
+void nof_symbol_resize_segment(char** segment, unsigned int count) {
+    char* old_segment = *segment;
+    *segment = realloc(*segment, count * NOF_SYMBOL_SIZE);
+    if (*segment == NULL) {
+        free(old_segment);
     }
 }
 
-// write symbol segment
-void nof_write_symbol(char* segment, nof_symbol_t symbol) {
-    static char* start;
-    static char* pointer;
+// count all elements
+unsigned int nof_text_count(nof_header_t header) {
+    return header.text_segment_size / BC_OPCODE_SIZE;
+}
 
-    if (start != segment) {
-        start = segment;
-        pointer = segment;
+// resize text segment by count of instructon
+void nof_text_resize_segment(char** segment, unsigned int count) {
+    char* old_segment = *segment;
+    *segment = realloc(*segment, count * BC_OPCODE_SIZE);
+    if (*segment == NULL) {
+        free(old_segment);
     }
+}
 
-    symbol.pointer = swap_endian(symbol.pointer);
-    memcpy(pointer, &symbol.pointer, 4);
-    strcpy(pointer+4, symbol.name);
-    pointer += 4 + strlen(symbol.name) + 1;
+// get instruction by index
+char nof_text_get_instruction(char* segment, unsigned int index) {
+    return segment[index * BC_OPCODE_SIZE];
+}
+
+// set instruction by index
+void nof_text_set_instruction(char* segment, unsigned int index, char instruction) {
+    segment[index * BC_OPCODE_SIZE] = instruction;
 }
 
 // write to file

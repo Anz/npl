@@ -2,6 +2,7 @@
 #define BYTECODE_H
 
 #define BC_BYTECODE_VERSION 1
+#define BC_OPCODE_SIZE 5
 
 #define BC_NOP   0x00
 #define BC_ARG   0x01

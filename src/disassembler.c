@@ -44,23 +44,23 @@ int main(int argc, char* argv[]) {
     // print symbols
     printf("symbol segment:\n");
     char* symbol_segment = nof_read_symbol_segment(file, header);
-    nof_symbol_t symbol;
-    while(nof_read_symbol(symbol_segment, header.symbol_segment_size, &symbol)) {
-        printf("0x%08X = \"%s\"\n", symbol.pointer, symbol.name);
+    unsigned int symbol_count = nof_symbol_count(header);
+    for(unsigned int index = 0; index < symbol_count; index++) {
+        char name[NOF_SYMBOL_NAME_SIZE+1];
+        nof_symbol_get_name(symbol_segment, index, name);
+        ctr_addr addr = nof_symbol_get_addr(symbol_segment, index);
+        
+        printf("0x%08X = \"%s\"\n", addr, name);
     }
     printf("\n");
 
     // print text
     printf("text segment:\n");
     char* text_segment = nof_read_text_segment(file, header);
-    nof_read_symbol(symbol_segment, header.symbol_segment_size, &symbol);
-    for(int i = 0; i < header.text_segment_size; i += 5) {
-        if (symbol.pointer == i) {
-            printf("%s:\n", symbol.name);
-            nof_read_symbol(symbol_segment, header.symbol_segment_size, &symbol);
-        }
-
-        printf("\t%s\n", bc_op2asm(text_segment[i]));
+    unsigned int text_count = nof_text_count(header);
+    for(unsigned int i = 0; i < text_count; i++) {
+        char instruction = nof_text_get_instruction(text_segment, i);
+        printf("\t%s\n", bc_op2asm(instruction));
     }
     printf("\n");
 

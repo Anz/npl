@@ -2,94 +2,73 @@
 #include "assembly.h"
 #include "bytecode.h"
 
-#define READ_BUFFER_SIZE 500
+#define READ_BUFFER_SIZE 1024
+#define SEGMENT_BUFFER_SIZE 1024
 
-asm_info_t asm_collection_info(FILE* file) {
-    asm_info_t info;
-    info.data_section = 0;
-    info.text_section = 0;
-    info.symbol_count = 0;
-    info.symbol_segment_size = 0;
-    info.instruction_count = 0;
-    info.text_segment_size = 0;
+int isletter(char c) {
+    return 'a' <= c && c <= 'z';
+}
 
-    // jump to start
-    fseek(file, 0, SEEK_SET);
+void jump_to_text_seg(FILE* file) {
+    char line[READ_BUFFER_SIZE];
+    memset(line, 0, READ_BUFFER_SIZE);
+    while(!feof(file) && memcmp(line, ".text", 5) != 0)  {
+        fgets(line, READ_BUFFER_SIZE, file);
+    }
+}
 
+size_t min_s(size_t a, size_t b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+void add_symbol(nof_header_t* header, char** symbol_seg_ptr, char* line, ctr_addr addr) {
+    static unsigned int symbol_index = 0;
+
+    char* name = strtok(line, ": ");
+    nof_symbol_set_addr(*symbol_seg_ptr, symbol_index, addr);
+    nof_symbol_set_name(*symbol_seg_ptr, symbol_index, name);
+
+    printf("<%s> <%08X>\n", name, addr);
+
+    symbol_index++;
+    header->symbol_segment_size += NOF_SYMBOL_SIZE;
+}
+
+void assembler(FILE* file, nof_header_t* header, char** symbol_seg_ptr, char** data_seg_ptr, char** text_seg_ptr) {
+    ctr_addr text_ptr = 0;
+
+    // jump to text segment
+    jump_to_text_seg(file);
+
+    // alloc space for 500 symbole
+    nof_symbol_resize_segment(symbol_seg_ptr, 100);
+    nof_text_resize_segment(text_seg_ptr, 100);
+    
     char line[READ_BUFFER_SIZE];
     while(!feof(file)) {
         fgets(line, READ_BUFFER_SIZE, file);
 
         switch(line[0]) {
-            // ingore comment
-            case ASM_COMMENT: continue;
-            // on segment
-            case ASM_SEGMENT: {
-                if (memcmp(ASM_DATA_SEGMENT, &line[1], strlen(ASM_DATA_SEGMENT)) == 0) {
-                    info.data_section = ftell(file);
-                } else if (memcmp(ASM_TEXT_SEGMENT, &line[1], strlen(ASM_TEXT_SEGMENT)) == 0) {
-                    info.text_section = ftell(file);
-                }
-                break;
-            }
-            // on instruction
-            case ASM_INSTRUCTION: {
-                info.instruction_count++;
-                break;
-            }
-            // on function
-            default: {
-                if (96 < line[0] && line[0] < 123) { // function
-                    info.symbol_count++;
-                    info.symbol_segment_size += 4 + (strchr(line, ':') - line) + 1;
-                }
-                break;
-            }
-        }
-    }
-
-    info.text_segment_size = info.instruction_count * 5;
-    return info;
-}
-
-void asm_fill_segment(FILE* file, char* symbol_segment, char* text_segment, asm_info_t info) {
-    // jump to .text
-    fseek(file, info.text_section, SEEK_SET);
-
-    unsigned int instruction_index = 0;
-    //char* symbol_pointer = symbol;
-
-    char line[READ_BUFFER_SIZE];
-    while(!feof(file)) {
-        fgets(line, READ_BUFFER_SIZE, file);
-
-        switch (line[0]) {
             // ignore comment
-            case ASM_COMMENT: continue;
+            case ASM_COMMENT: break;
             // abort on new segment
             case ASM_SEGMENT: return;
             // on instruction
-            case ASM_INSTRUCTION: {
-                char* mnemonic = strtok(line, "\t ");
-                char instruction = bc_asm2op(mnemonic);
-                text_segment[instruction_index] = instruction;
-                unsigned int addr = 0xAAAAAAAA;
-                memcpy(&text_segment[instruction_index+1], &addr, 4);
-                instruction_index += 5;
-                break;
+            case ASM_SPACE:
+            case ASM_TAB: {
+                unsigned int index = header->text_segment_size / BC_OPCODE_SIZE;
+                //nof_text_set_instruction(*text_seg_ptr, index, BC_NOP);
+                header->text_segment_size += BC_OPCODE_SIZE;
             }
-            // on function
+
             default: {
-                if (96 < line[0] && line[0] < 123) { // function
-                    nof_symbol_t symbol;
-                    symbol.pointer = instruction_index;
-                    size_t len = (strchr(line, ':') - line) + 1;
-                    char name[len];
-                    memcpy(name, line, len);
-                    name[len-1] = '\0';
-                    symbol.name = name;
-                    nof_write_symbol(symbol_segment, symbol);
-                }
+                // on function
+                if (isletter(line[0])) {
+                    add_symbol(header, symbol_seg_ptr, line, text_ptr);
+               }
             }
         }
     }

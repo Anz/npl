@@ -32,34 +32,26 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // collection info from input
-    asm_info_t info = asm_collection_info(input);
-
-    // show info
-    printf("data_section        = %u\n", info.data_section);
-    printf("text_section        = %u\n", info.text_section);
-    printf("symbol_count        = %u\n", info.symbol_count);
-    printf("symbol_segment_size = %u\n", info.symbol_segment_size);
-    printf("instruction_count   = %u\n", info.instruction_count);
-    printf("text_segment_size   = %u\n", info.text_segment_size);
-
     // set header
     nof_header_t header;
     header.magic_number = NOF_MAGIC_NUMBER;
     header.container_version = NOF_CONTAINER_VERSION;
     header.content_version = BC_BYTECODE_VERSION;
-    header.symbol_segment_size = info.symbol_segment_size;
-    header.data_segment_size = 4;
-    header.text_segment_size = info.text_segment_size;
-    char buffer[4];
+    header.symbol_segment_size = 0;
+    header.data_segment_size = 0;
+    header.text_segment_size = 0;
 
     // assembler
-    char symbol_segment[header.symbol_segment_size];
-    char text_segment[header.text_segment_size];
-    asm_fill_segment(input, symbol_segment, text_segment, info);
+    char* symbol_segment = NULL;
+    char* data_segment = NULL;
+    char* text_segment = NULL;
+    assembler(input, &header, &symbol_segment, &data_segment, &text_segment);
 
     // write container
-    nof_write_segment(output, header, symbol_segment, buffer, text_segment);
+    nof_write_segment(output, header, symbol_segment, NULL, text_segment);
+    free(symbol_segment);
+    free(data_segment);
+    free(text_segment);
 
     fclose(input);
     fclose(output);
