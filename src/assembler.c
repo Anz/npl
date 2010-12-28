@@ -32,26 +32,18 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // set header
-    nof_header_t header;
-    header.magic_number = NOF_MAGIC_NUMBER;
-    header.container_version = NOF_CONTAINER_VERSION;
-    header.content_version = BC_BYTECODE_VERSION;
-    header.symbol_segment_size = 0;
-    header.data_segment_size = 0;
-    header.text_segment_size = 0;
-
     // assembler
-    char* symbol_segment = NULL;
-    char* data_segment = NULL;
-    char* text_segment = NULL;
+    ctr_header_t header;
+    ctr_segment_t symbol_segment;
+    ctr_segment_t data_segment;
+    ctr_segment_t text_segment;
     assembler(input, &header, &symbol_segment, &data_segment, &text_segment);
 
     // write container
-    nof_write_segment(output, header, symbol_segment, NULL, text_segment);
-    free(symbol_segment);
-    free(data_segment);
-    free(text_segment);
+    ctr_write_segment(output, symbol_segment, data_segment, text_segment);
+    free(symbol_segment.data);
+    free(data_segment.data);
+    free(text_segment.data);
 
     fclose(input);
     fclose(output);

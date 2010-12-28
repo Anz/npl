@@ -1,57 +1,65 @@
-#ifndef NOF_H
-#define NOF_H
+#ifndef CTR_H
+#define CTR_H
 
-//#include "list.h"
 #include <stddef.h>
 #include <stdio.h>
 
 // constans
-#define NOF_MAGIC_NUMBER 0xAFFEAFFE
-#define NOF_CONTAINER_VERSION 1
-#define NOF_HEADER_SIZE 24
-#define NOF_ADDR_SIZE 4
-#define NOF_SYMBOL_NAME_SIZE 512
-#define NOF_SYMBOL_SIZE 516
+#define CTR_MAGIC_NUMBER 0xAFFEAFFE
+#define CTR_CONTAINER_VERSION 1
+#define CTR_HEADER_SIZE 24
+#define CTR_ADDR_SIZE 4
+#define CTR_SYMBOL_NAME_SIZE 512
+#define CTR_SYMBOL_SIZE 516
 
-#define NOF_MAGIC_NUMBER_INDEX 0
-#define NOF_CONTAINER_VERSION_INDEX 4
-#define NOF_CONTENT_VERSION_INDEX 8
-#define NOF_SYMBOL_SIZE_INDEX 12
-#define NOF_DATA_SIZE_INDEX 16
-#define NOF_TEXT_SIZE_INDEX 20
+#define CTR_MAGIC_NUMBER_INDEX 0
+#define CTR_CONTAINER_VERSION_INDEX 4
+#define CTR_CONTENT_VERSION_INDEX 8
+#define CTR_SYMBOL_SIZE_INDEX 12
+#define CTR_DATA_SIZE_INDEX 16
+#define CTR_TEXT_SIZE_INDEX 20
 
+// address type
 typedef unsigned int ctr_addr;
 
-typedef struct nof_header {
+// container header type
+typedef struct ctr_header {
     unsigned int magic_number;
     unsigned int container_version;
     unsigned int content_version;
     size_t symbol_segment_size;
     size_t data_segment_size;
     size_t text_segment_size;
-} nof_header_t;
+} ctr_header_t;
+
+// container segment type
+typedef struct ctr_segment {
+    char* data;
+    size_t size;
+} ctr_segment_t;
 
 // basic read
-nof_header_t nof_read_header(FILE* file);
-char* nof_read_symbol_segment(FILE* file, nof_header_t header);
-char* nof_read_data_segment(FILE* file, nof_header_t header);
-char* nof_read_text_segment(FILE* file, nof_header_t header);
+ctr_header_t ctr_read_header(FILE* file);
+ctr_segment_t ctr_read_symbol_segment(FILE* file, ctr_header_t header);
+ctr_segment_t ctr_read_data_segment(FILE* file, ctr_header_t header);
+ctr_segment_t ctr_read_text_segment(FILE* file, ctr_header_t header);
 
 // basic write
-void nof_write_segment(FILE* file, nof_header_t, char* symbol, char* data, char* text);
+void ctr_write_segment(FILE* file, ctr_segment_t symbol, ctr_segment_t data, ctr_segment_t text);
 
 // symbol segment functions
-unsigned int nof_symbol_count(nof_header_t header);
-ctr_addr nof_symbol_get_addr(char* segment, unsigned int index);
-void nof_symbol_set_addr(char* segment, unsigned int index, ctr_addr addr);
-void nof_symbol_get_name(char* segment, unsigned int index, char* name);
-void nof_symbol_set_name(char* segment, unsigned int index, char* name);
-void nof_symbol_resize_segment(char** segment, unsigned int count);
+unsigned int ctr_symbol_count(ctr_segment_t segment);
+ctr_addr ctr_symbol_get_addr(ctr_segment_t segment, unsigned int index);
+void ctr_symbol_set_addr(ctr_segment_t segment, unsigned int index, ctr_addr addr);
+void ctr_symbol_get_name(ctr_segment_t segment, unsigned int index, char* name);
+void ctr_symbol_set_name(ctr_segment_t segment, unsigned int index, char* name);
+void ctr_symbol_resize_segment(ctr_segment_t* segment, unsigned int count);
+unsigned int ctr_symbol_find_by_addr(ctr_segment_t segment, ctr_addr addr);
 
 // text segment functions
-unsigned int nof_text_count(nof_header_t header);
-char nof_text_get_instruction(char* segment, unsigned int index);
-void nof_text_set_instruction(char* segment, unsigned int index, char instruction);
-void nof_text_resize_segment(char** segment, unsigned int count);
+unsigned int ctr_text_count(ctr_segment_t segment);
+char ctr_text_get_instruction(ctr_segment_t segment, unsigned int index);
+void ctr_text_set_instruction(ctr_segment_t segment, unsigned int index, char instruction);
+void ctr_text_resize_segment(ctr_segment_t* segment, unsigned int count);
 
 #endif

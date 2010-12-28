@@ -24,29 +24,34 @@ size_t min_s(size_t a, size_t b) {
     return b;
 }
 
-void add_symbol(nof_header_t* header, char** symbol_seg_ptr, char* line, ctr_addr addr) {
+void add_symbol(ctr_segment_t* symbol_segment, char* line, ctr_addr addr) {
     static unsigned int symbol_index = 0;
 
+    ctr_symbol_resize_segment(symbol_segment, symbol_index+1);
+
+    ctr_symbol_set_addr(*symbol_segment, symbol_index, addr);
     char* name = strtok(line, ": ");
-    nof_symbol_set_addr(*symbol_seg_ptr, symbol_index, addr);
-    nof_symbol_set_name(*symbol_seg_ptr, symbol_index, name);
+    ctr_symbol_set_name(*symbol_segment, symbol_index, name);
 
     printf("<%s> <%08X>\n", name, addr);
 
     symbol_index++;
-    header->symbol_segment_size += NOF_SYMBOL_SIZE;
 }
 
-void assembler(FILE* file, nof_header_t* header, char** symbol_seg_ptr, char** data_seg_ptr, char** text_seg_ptr) {
-    ctr_addr text_ptr = 0;
+void assembler(FILE* file, ctr_header_t* header, ctr_segment_t* symbol_segment, ctr_segment_t* data_segment, ctr_segment_t* text_segment) {
+    // set settings
+    unsigned int text_index = 0;
+
+    symbol_segment->size = 0;
+    symbol_segment->data = NULL;
+    data_segment->size = 0;
+    data_segment->data = NULL;
+    text_segment->size = 0;
+    text_segment->data = NULL;
 
     // jump to text segment
     jump_to_text_seg(file);
 
-    // alloc space for 500 symbole
-    nof_symbol_resize_segment(symbol_seg_ptr, 100);
-    nof_text_resize_segment(text_seg_ptr, 100);
-    
     char line[READ_BUFFER_SIZE];
     while(!feof(file)) {
         fgets(line, READ_BUFFER_SIZE, file);
@@ -59,15 +64,17 @@ void assembler(FILE* file, nof_header_t* header, char** symbol_seg_ptr, char** d
             // on instruction
             case ASM_SPACE:
             case ASM_TAB: {
-                unsigned int index = header->text_segment_size / BC_OPCODE_SIZE;
-                //nof_text_set_instruction(*text_seg_ptr, index, BC_NOP);
-                header->text_segment_size += BC_OPCODE_SIZE;
+                char* mnemonic = strtok(line, "\t ");
+                char instruction = bc_asm2op(mnemonic);
+                ctr_text_resize_segment(text_segment, text_index+1);
+                ctr_text_set_instruction(*text_segment, text_index, instruction);
+                text_index++;
             }
 
             default: {
                 // on function
                 if (isletter(line[0])) {
-                    add_symbol(header, symbol_seg_ptr, line, text_ptr);
+                    add_symbol(symbol_segment, line, text_index * BC_OPCODE_SIZE);
                }
             }
         }

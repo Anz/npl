@@ -22,8 +22,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // load nof
-    nof_header_t header = nof_read_header(file);
+    // load ctr
+    ctr_header_t header = ctr_read_header(file);
 
     // print header
     printf("header segment:\n");
@@ -35,20 +35,20 @@ int main(int argc, char* argv[]) {
     printf("text segment size   = %u Bytes\n", header.text_segment_size);
 
     // check magic number
-    if (header.magic_number != NOF_MAGIC_NUMBER) {
-        fprintf(stderr, "magic number is not equal to 0x%X - abort\n", NOF_MAGIC_NUMBER);
+    if (header.magic_number != CTR_MAGIC_NUMBER) {
+        fprintf(stderr, "magic number is not equal to 0x%X - abort\n", CTR_MAGIC_NUMBER);
         return 1;
     }
     printf("\n");
 
     // print symbols
     printf("symbol segment:\n");
-    char* symbol_segment = nof_read_symbol_segment(file, header);
-    unsigned int symbol_count = nof_symbol_count(header);
+    ctr_segment_t symbol_segment = ctr_read_symbol_segment(file, header);
+    unsigned int symbol_count = ctr_symbol_count(symbol_segment);
     for(unsigned int index = 0; index < symbol_count; index++) {
-        char name[NOF_SYMBOL_NAME_SIZE+1];
-        nof_symbol_get_name(symbol_segment, index, name);
-        ctr_addr addr = nof_symbol_get_addr(symbol_segment, index);
+        char name[CTR_SYMBOL_NAME_SIZE+1];
+        ctr_symbol_get_name(symbol_segment, index, name);
+        ctr_addr addr = ctr_symbol_get_addr(symbol_segment, index);
         
         printf("0x%08X = \"%s\"\n", addr, name);
     }
@@ -56,10 +56,10 @@ int main(int argc, char* argv[]) {
 
     // print text
     printf("text segment:\n");
-    char* text_segment = nof_read_text_segment(file, header);
-    unsigned int text_count = nof_text_count(header);
+    ctr_segment_t text_segment = ctr_read_text_segment(file, header);
+    unsigned int text_count = ctr_text_count(text_segment);
     for(unsigned int i = 0; i < text_count; i++) {
-        char instruction = nof_text_get_instruction(text_segment, i);
+        char instruction = ctr_text_get_instruction(text_segment, i);
         printf("\t%s\n", bc_op2asm(instruction));
     }
     printf("\n");
