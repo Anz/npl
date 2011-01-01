@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <container.h>
 #include <bytecode.h>
+#include "util.h"
 
 void print_usage();
 
@@ -56,20 +57,30 @@ int main(int argc, char* argv[]) {
 
     // print text
     printf("text segment:\n");
-    ctr_segment_t text_segment = ctr_read_text_segment(file, header);
-    unsigned int text_count = ctr_text_count(text_segment);
+    unsigned int text_count = header.text_segment_size / BC_OPCODE_SIZE;
+    char opcode[BC_OPCODE_SIZE];
+    long offset = CTR_HEADER_SIZE + header.symbol_segment_size + header.data_segment_size;
+    fseek(file, offset, SEEK_SET);
     for(unsigned int i = 0; i < text_count; i++) {
-        ctr_addr addr = i * BC_OPCODE_SIZE;
-        int symbol = ctr_symbol_find_by_addr(symbol_segment, addr);
-        char instruction = ctr_text_get_instruction(text_segment, i);
+        fread(opcode, sizeof(char), BC_OPCODE_SIZE, file);
+
+        int symbol = ctr_symbol_find_by_addr(symbol_segment, i);
 
         if (symbol != -1) {
             char name[CTR_SYMBOL_NAME_SIZE+1];
             ctr_symbol_get_name(symbol_segment, symbol, name);
-            printf("%08X <%s>:\n", addr, name);
+            printf("%08X <%s>:\n", i, name);
         }
 
-        printf(" %08X:\t%02X %02X %02X %02X %02X\t\t%s\t0x%08X\n", addr, instruction, 0, 0, 0, 0, bc_op2asm(instruction), 0);
+        printf(" %08X:\t%02X %02X %02X %02X %02X\t\t%s\t0x%08X\n", 
+            i, 
+            char2int(opcode[0]), 
+            char2int(opcode[1]), 
+            char2int(opcode[2]), 
+            char2int(opcode[3]), 
+            char2int(opcode[4]), 
+            bc_op2asm(opcode[0]), 
+            swap_endian(*(unsigned int*)&opcode[1]));
     }
     printf("\n");
 

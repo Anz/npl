@@ -32,3 +32,8 @@ char* resize_memory(char* buffer, size_t size) {
     }
     return buffer;
 }
+
+unsigned int char2int(char value) {
+    unsigned int new_value = value;
+    return (new_value << 24) >> 24; 
+}

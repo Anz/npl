@@ -57,14 +57,12 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input) {
     unsigned int* arg = (unsigned int*)&opcode[1];
     int count = header.text_segment_size / BC_OPCODE_SIZE;
     for(int i = 0; i < count; i++) {
-        printf("%08X addr \n", i*BC_OPCODE_SIZE);
         if (ctr_symbol_find(symbols, header, i*BC_OPCODE_SIZE) >= 0) {
             if (i > 0) {
                 write1(X86_LEAVE, native.text, &index);
                 write1(X86_RET, native.text, &index);
             }
             write4(X86_ENTER, native.text, &index);
-            printf("addr!\n");
         }
 
         fread(opcode, sizeof(char), sizeof(opcode), input);

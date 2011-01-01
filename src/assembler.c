@@ -33,18 +33,9 @@ int main(int argc, char* argv[]) {
     }
 
     // assembler
-    ctr_header_t header;
-    ctr_segment_t symbol_segment;
-    ctr_segment_t data_segment;
-    ctr_segment_t text_segment;
-    assembler(input, &header, &symbol_segment, &data_segment, &text_segment);
+    assembler(input, output);
 
-    // write container
-    ctr_write_segment(output, symbol_segment, data_segment, text_segment);
-    free(symbol_segment.data);
-    free(data_segment.data);
-    free(text_segment.data);
-
+    // close file
     fclose(input);
     fclose(output);
 

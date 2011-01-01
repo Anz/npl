@@ -11,6 +11,6 @@
 #define ASM_TAB '\t'
 #define ASM_SPACE ' '
 
-void assembler(FILE* file, ctr_header_t* header, ctr_segment_t* symbol_segment, ctr_segment_t* data_segment, ctr_segment_t* text_segment);
+void assembler(FILE* input, FILE* output);
 
 #endif // ASSEMBLER_H_INCLUDED
