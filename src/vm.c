@@ -46,22 +46,21 @@ int main(int argc, char* argv[]) {
     // init
     job_list_t jobs;
     job_list_init(&jobs);
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 1; i++) {
         job_list_push(&jobs, main_job);
      }
 
     thread_t threads[thread_count];
 
     // create threads
-    /*for (int i = 0; i < thread_count; i++) {
+    for (int i = 0; i < thread_count; i++) {
         thread_init(&threads[i], &jobs);
     }
     // wait for threads
     for (int i = 0; i < thread_count; i++) {
         thread_join(&threads[i]);
-    }*/
-    printf("%08X: %08X\n", native.main, *(unsigned int*)native.main);
-    native.main();
+    }
+    //native.main();
 
     // releasep
     job_list_release(&jobs);

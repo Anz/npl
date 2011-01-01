@@ -62,6 +62,31 @@ ctr_segment_t ctr_read_text_segment(FILE* file, ctr_header_t header) {
     return read_segment(file, start, size);
 }
 
+// read symbol segment into array
+ctr_symbol_t* ctr_symbol_read(FILE* stream, ctr_header_t header) {
+    int count = header.symbol_segment_size / CTR_SYMBOL_SIZE;
+    ctr_symbol_t* symbols = calloc(count, sizeof(ctr_symbol_t));
+    fseek(stream, CTR_HEADER_SIZE, SEEK_SET);
+    for (int i = 0; i < count; i++) {
+        char buffer[CTR_SYMBOL_SIZE];
+        fread(buffer, sizeof(char), CTR_SYMBOL_SIZE, stream);
+        symbols[i].addr = swap_endian(*(unsigned int*)buffer);
+        memcpy(symbols[i].name, &buffer[4], CTR_SYMBOL_NAME_SIZE);
+    }
+    return symbols;
+}
+
+// find symbol in array by addr
+int ctr_symbol_find(ctr_symbol_t* symbols, ctr_header_t header, ctr_addr addr) {
+    int count = header.symbol_segment_size / CTR_SYMBOL_SIZE;
+    for (int i = 0; i < count; i++) {
+        if (symbols[i].addr == addr) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 // calculate symbol count
 // symbol count = symbol size / (symbol addr size + symbol name size)
 unsigned int ctr_symbol_count(ctr_segment_t segment) {

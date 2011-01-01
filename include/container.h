@@ -25,6 +25,12 @@ typedef struct ctr_header {
     size_t text_segment_size;
 } ctr_header_t;
 
+// symbol
+typedef struct ctr_symbol {
+    char name[CTR_SYMBOL_NAME_SIZE+1];
+    ctr_addr addr;
+} ctr_symbol_t;
+
 // container segment type
 typedef struct ctr_segment {
     char* data;
@@ -41,6 +47,9 @@ ctr_segment_t ctr_read_text_segment(FILE* file, ctr_header_t header);
 void ctr_write_segment(FILE* file, ctr_segment_t symbol, ctr_segment_t data, ctr_segment_t text);
 
 // symbol segment functions
+ctr_symbol_t* ctr_symbol_read(FILE* stream, ctr_header_t header);
+int ctr_symbol_find(ctr_symbol_t* symbols, ctr_header_t header, ctr_addr addr);
+
 unsigned int ctr_symbol_count(ctr_segment_t segment);
 ctr_addr ctr_symbol_get_addr(ctr_segment_t segment, unsigned int index);
 void ctr_symbol_set_addr(ctr_segment_t segment, unsigned int index, ctr_addr addr);
