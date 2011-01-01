@@ -9,7 +9,7 @@ typedef struct arch_native {
     void* data;
 } arch_native_t;
 
-arch_native_t arch_compile(ctr_segment_t symbol, ctr_segment_t data, ctr_segment_t text);
+arch_native_t arch_compile(ctr_header_t header, FILE* input);
 
 #endif
 

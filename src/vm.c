@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
     path = argv[argc-1];
 
     // open module
-    FILE* module = fopen(path, "r");
+    FILE* module = fopen(path, "rb");
     if (module == NULL) {
         printf("cannot open: %s\n", argv[1]);
         return 2; 
@@ -32,12 +32,10 @@ int main(int argc, char* argv[]) {
 
     // read module
     ctr_header_t header = ctr_read_header(module);
-    ctr_segment_t symbol = ctr_read_symbol_segment(module, header);
-    ctr_segment_t data = ctr_read_data_segment(module, header);
-    ctr_segment_t text = ctr_read_text_segment(module, header);
 
     // compile bytecode
-    arch_native_t native = arch_compile(symbol, data, text);
+    arch_native_t native = arch_compile(header, module);
+    fclose(module);
 
     // create main job
     job_t main_job;
@@ -67,6 +65,7 @@ int main(int argc, char* argv[]) {
 
     // releasep
     job_list_release(&jobs);
+    free(native.text);
 
     printf("end\n");
 

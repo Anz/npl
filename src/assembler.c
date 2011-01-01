@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 
     // ouput
     char* output_path = argv[2];
-    FILE* output = fopen(output_path, "w");
+    FILE* output = fopen(output_path, "wb");
     if (output == NULL) {
         fprintf(stderr, "can not open file: %s\n", output_path);
         return 1;

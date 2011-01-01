@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
 
     // load file
     char* path = argv[1];
-    FILE* file = fopen(path, "r");
+    FILE* file = fopen(path, "rb");
 
     // on error, print error
     if (file == NULL) {
