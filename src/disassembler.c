@@ -66,10 +66,10 @@ int main(int argc, char* argv[]) {
         if (symbol != -1) {
             char name[CTR_SYMBOL_NAME_SIZE+1];
             ctr_symbol_get_name(symbol_segment, symbol, name);
-            printf("%s:\t%s\n", name, bc_op2asm(instruction));
-        } else {
-            printf("\t%s\n", bc_op2asm(instruction));
+            printf("%08X <%s>:\n", addr, name);
         }
+
+        printf(" %08X:\t%02X %02X %02X %02X %02X\t\t%s\t0x%08X\n", addr, instruction, 0, 0, 0, 0, bc_op2asm(instruction), 0);
     }
     printf("\n");
 
