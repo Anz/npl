@@ -5,7 +5,9 @@ void* thread_main(void* args) {
     
     while (thread->jobs->count > 0) {
         // get next job
+        job_list_lock(thread->jobs);
         job_t job = job_list_pop(thread->jobs);
+        job_list_unlock(thread->jobs);
 
         // execite job
         job.func();
