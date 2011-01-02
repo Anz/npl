@@ -43,5 +43,5 @@ int main(int argc, char* argv[]) {
 }
 
 void print_usage() {
-    printf("usage\n");
+    printf("usage: nas <input> <output>\n");
 }
