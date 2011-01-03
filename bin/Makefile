@@ -1,7 +1,7 @@
 include ../Makefile.common
 
-NAS= util.o assembly.o bytecode.o container.o assembler.o
-NIS= util.o bytecode.o container.o disassembler.o
+NAS= util.o assembly.o bytecode.o container.o map.o assembler.o
+NIS= util.o bytecode.o container.o map.o disassembler.o
 VM= util.o bytecode.o container.o job.o x86.o thread.o vm.o
 
 all: nas nis vm

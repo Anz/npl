@@ -34,7 +34,7 @@ ctr_header_t ctr_read_header(FILE* file) {
     header.container_version   = swap_endian(ptr[1]); 
     header.content_version     = swap_endian(ptr[2]);
     header.symbol_segment_size = swap_endian(ptr[3]);
-    header.data_segment_size   = swap_endian(ptr[4]);
+    header.external_symbol_segment_size   = swap_endian(ptr[4]);
     header.text_segment_size   = swap_endian(ptr[5]);
 
    return header;
@@ -49,15 +49,15 @@ ctr_segment_t ctr_read_symbol_segment(FILE* file, ctr_header_t header) {
 }
 
 // read data section
-ctr_segment_t ctr_read_data_segment(FILE* file, ctr_header_t header) {
+/*ctr_segment_t ctr_read_data_segment(FILE* file, ctr_header_t header) {
     size_t start = CTR_HEADER_SIZE + header.symbol_segment_size;
     size_t size = header.data_segment_size;
     return read_segment(file, start, size);
-}
+}*/
 
 // read text section
 ctr_segment_t ctr_read_text_segment(FILE* file, ctr_header_t header) {
-    size_t start = CTR_HEADER_SIZE + header.symbol_segment_size + header.data_segment_size;
+    size_t start = CTR_HEADER_SIZE + header.symbol_segment_size + header.external_symbol_segment_size;
     size_t size = header.text_segment_size;
     return read_segment(file, start, size);
 }
@@ -146,7 +146,7 @@ int ctr_symbol_find_by_addr(ctr_segment_t segment, ctr_addr addr) {
     }
     return -1;
 }
-
+/*
 // count all elements
 unsigned int ctr_text_count(ctr_segment_t segment) {
     return segment.size / BC_OPCODE_SIZE;
@@ -195,4 +195,4 @@ void ctr_write_segment(FILE* file, ctr_segment_t symbol, ctr_segment_t data, ctr
     // write text
     fwrite(text.data, 1, text.size, file);
 }
-
+*/

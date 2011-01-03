@@ -13,7 +13,7 @@
 #define CTR_SYMBOL_SIZE 516
 
 // address type
-typedef unsigned int ctr_addr;
+typedef int ctr_addr;
 
 // container header type
 typedef struct ctr_header {
@@ -21,7 +21,7 @@ typedef struct ctr_header {
     unsigned int container_version;
     unsigned int content_version;
     size_t symbol_segment_size;
-    size_t data_segment_size;
+    size_t external_symbol_segment_size;
     size_t text_segment_size;
 } ctr_header_t;
 
@@ -30,6 +30,13 @@ typedef struct ctr_symbol {
     char name[CTR_SYMBOL_NAME_SIZE+1];
     ctr_addr addr;
 } ctr_symbol_t;
+
+// external symbol
+typedef struct ctr_external_symbol {
+    char name[CTR_SYMBOL_NAME_SIZE+1];
+    ctr_addr addr;
+} ctr_external_symbol_t;
+
 
 // container segment type
 typedef struct ctr_segment {
@@ -40,11 +47,11 @@ typedef struct ctr_segment {
 // basic read
 ctr_header_t ctr_read_header(FILE* file);
 ctr_segment_t ctr_read_symbol_segment(FILE* file, ctr_header_t header);
-ctr_segment_t ctr_read_data_segment(FILE* file, ctr_header_t header);
-ctr_segment_t ctr_read_text_segment(FILE* file, ctr_header_t header);
+//ctr_segment_t ctr_read_data_segment(FILE* file, ctr_header_t header);
+//ctr_segment_t ctr_read_text_segment(FILE* file, ctr_header_t header);
 
 // basic write
-void ctr_write_segment(FILE* file, ctr_segment_t symbol, ctr_segment_t data, ctr_segment_t text);
+//void ctr_write_segment(FILE* file, ctr_segment_t symbol, ctr_segment_t data, ctr_segment_t text);
 
 // symbol segment functions
 ctr_symbol_t* ctr_symbol_read(FILE* stream, ctr_header_t header);
@@ -55,13 +62,13 @@ ctr_addr ctr_symbol_get_addr(ctr_segment_t segment, unsigned int index);
 void ctr_symbol_set_addr(ctr_segment_t segment, unsigned int index, ctr_addr addr);
 void ctr_symbol_get_name(ctr_segment_t segment, unsigned int index, char* name);
 void ctr_symbol_set_name(ctr_segment_t segment, unsigned int index, char* name);
-void ctr_symbol_resize_segment(ctr_segment_t* segment, unsigned int count);
+//void ctr_symbol_resize_segment(ctr_segment_t* segment, unsigned int count);
 int ctr_symbol_find_by_addr(ctr_segment_t segment, ctr_addr addr);
 
 // text segment functions
-unsigned int ctr_text_count(ctr_segment_t segment);
+/*unsigned int ctr_text_count(ctr_segment_t segment);
 char ctr_text_get_instruction(ctr_segment_t segment, unsigned int index);
 void ctr_text_set_instruction(ctr_segment_t segment, unsigned int index, char instruction);
 void ctr_text_resize_segment(ctr_segment_t* segment, unsigned int count);
-
+*/
 #endif

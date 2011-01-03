@@ -41,7 +41,7 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input) {
     ctr_symbol_t* symbols = ctr_symbol_read(input, header);
 
     // jump to text segment
-    long text_offset = CTR_HEADER_SIZE + header.symbol_segment_size + header.data_segment_size;
+    long text_offset = CTR_HEADER_SIZE + header.symbol_segment_size + header.external_symbol_segment_size;
     fseek(input, text_offset, SEEK_SET);
 
     // alloc space

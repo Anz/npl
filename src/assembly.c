@@ -2,6 +2,7 @@
 #include "assembly.h"
 #include "bytecode.h"
 #include "util.h"
+#include "map.h"
 
 #define READ_BUFFER_SIZE 1024
 #define SEGMENT_BUFFER_SIZE 1024
@@ -15,42 +16,40 @@ void jump_to_text_seg(FILE* file) {
     }
 }
 
-void add_symbol(ctr_segment_t* symbol_segment, char* line, ctr_addr addr) {
-    static unsigned int symbol_index = 0;
+size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols) {
+    // jump to text seg
+    jump_to_text_seg(input);
 
-    ctr_symbol_resize_segment(symbol_segment, symbol_index+1);
-
-    ctr_symbol_set_addr(*symbol_segment, symbol_index, addr);
-    char* name = strtok(line, ": ");
-    ctr_symbol_set_name(*symbol_segment, symbol_index, name);
-
-    printf("<%s> <%08X>\n", name, addr);
-
-    symbol_index++;
-}
-
-size_t write_symbol_segment(FILE* input, FILE* output) {
     size_t size = 0;
     ctr_addr addr = 0;
     char line[READ_BUFFER_SIZE];
     while(!feof(input)) {
         fgets(line, READ_BUFFER_SIZE, input);
 
-        switch(line[0]) {
-            case ASM_SPACE:
-            case ASM_TAB: {
-                addr++;
-            }
-            default: {
-                // on function
-                if (isletter(line[0])) {
-                    ctr_addr symbol_addr = swap_endian(addr);
-                    fwrite(&symbol_addr, sizeof(char), CTR_ADDR_SIZE, output);
-                    char* name = strtok(line, ": ");
-                    fwrite(name, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
-                    size += CTR_SYMBOL_SIZE;
-               }
-            }
+        char* colon = strchr(line, ':');
+        char* instruction = NULL;
+        if (colon == NULL) {
+            instruction = strtok(line, " \t\r\n");
+        } else {
+            instruction = strtok(colon+1, " \t\r\n"); 
+        }
+
+        if (colon != NULL) {
+            ctr_addr symbol_addr = swap_endian(addr);
+            char* name = strtok(line, ": ");
+
+            // add symbol to map
+            map_add(symbols, name, &symbol_addr);
+
+            // write to file
+            fwrite(&symbol_addr, sizeof(char), CTR_ADDR_SIZE, output);
+            fwrite(name, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
+            size += CTR_SYMBOL_SIZE;
+           
+        }
+
+        if (instruction != NULL) {
+            addr++;
         }
     }
     return size;
@@ -63,7 +62,9 @@ void assembler(FILE* input, FILE* output) {
     fwrite(tmp_header, sizeof(char), CTR_HEADER_SIZE, output);
 
     // write symbol
-    size_t symbol_size = write_symbol_segment(input, output);
+    map_t symbols;
+    map_init(&symbols, sizeof(ctr_addr));
+    size_t symbol_size = write_symbol_segment(input, output, &symbols);
 
     // jump to text segment
     jump_to_text_seg(input);
@@ -74,21 +75,37 @@ void assembler(FILE* input, FILE* output) {
     while(!feof(input) && running) {
         fgets(line, READ_BUFFER_SIZE, input);
 
-        switch(line[0]) {
-            // abort on new segment
-            case ASM_SEGMENT: {
-                running = 0;
+        if (line[0] == ASM_SEGMENT) {
+            running = 0;
+            continue;
+        }
+
+        char* colon = strchr(line, ':');
+        char* mnemonic = NULL;
+        if (colon == NULL) {
+            mnemonic = strtok(line, " \t\r\n");
+        } else {
+            mnemonic = strtok(colon+1, " \t\r\n"); 
+        }
+
+
+        // on instruction
+        if (mnemonic != NULL) {
+            char instruction = bc_asm2op(mnemonic);
+            unsigned int arg = 0x0;
+
+            char* arg1 = strtok(NULL, " ,\t\r\n"); 
+            if (instruction == BC_SYNC && arg1 != NULL) {
+                map_node_t* symbol = map_find(&symbols, arg1);
+                if (symbol != NULL) {
+                    arg = text_size - (*(ctr_addr*)symbol->value);
+                }
             }
-            // on instruction
-            case ASM_SPACE:
-            case ASM_TAB: {
-                char* mnemonic = strtok(line, "\t ");
-                char instruction = bc_asm2op(mnemonic);
-                fwrite(&instruction, sizeof(char), 1, output);
-                unsigned int null = 0x00000000;
-                fwrite(&null, sizeof(unsigned int), 1, output);
-                text_size += BC_OPCODE_SIZE;
-            }
+
+            // write
+            fwrite(&instruction, sizeof(char), 1, output);
+            fwrite(&arg, sizeof(int), 1, output);
+            text_size += BC_OPCODE_SIZE;
         }
     }
     unsigned int header[] = {

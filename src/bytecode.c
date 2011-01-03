@@ -32,6 +32,42 @@ char bc_asm2op(char* assembly) {
         return BC_JMP;
     }
 
+    if (strcmp(BC_ASM_JE,assembly) == 0) {
+        return BC_JE;
+    }
+
+    if (strcmp(BC_ASM_JNE,assembly) == 0) {
+        return BC_JNE;
+    }
+
+    if (strcmp(BC_ASM_JL,assembly) == 0) {
+        return BC_JL;
+    }
+
+    if (strcmp(BC_ASM_JLE,assembly) == 0) {
+        return BC_JLE;
+    }
+
+    if (strcmp(BC_ASM_JG,assembly) == 0) {
+        return BC_JG;
+    }
+
+    if (strcmp(BC_ASM_JGE,assembly) == 0) {
+        return BC_JGE;
+    }
+
+    if (strcmp(BC_ASM_ENTER,assembly) == 0) {
+        return BC_ENTER;
+    }
+
+    if (strcmp(BC_ASM_SYNCE,assembly) == 0) {
+        return BC_SYNCE;
+    }
+
+    if (strcmp(BC_ASM_ASYNCE,assembly) == 0) {
+        return BC_ASYNCE;
+    }
+
     return -1;
 }
 
@@ -44,6 +80,15 @@ char* bc_op2asm(char opcode) {
         case BC_RET: return BC_ASM_RET;
         case BC_CMP: return BC_ASM_CMP;
         case BC_JMP: return BC_ASM_JMP;
+        case BC_JE: return BC_ASM_JE;
+        case BC_JNE: return BC_ASM_JNE;
+        case BC_JL: return BC_ASM_JL;
+        case BC_JLE: return BC_ASM_JLE;
+        case BC_JG: return BC_ASM_JG;
+        case BC_JGE: return BC_ASM_JGE;
+        case BC_ENTER: return BC_ASM_ENTER;
+        case BC_SYNCE: return BC_ASM_SYNCE;
+        case BC_ASYNCE: return BC_ASM_ASYNCE;
         default: return NULL;
     }
 }
