@@ -75,8 +75,6 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input) {
             }
         }
     }
-    write1(X86_LEAVE, native.text, &index);
-    write1(X86_RET, native.text, &index);
 
     char* text = native.text;
     for (int i = 0; text[i] != 0;) {
