@@ -37,6 +37,13 @@ void write4(unsigned int data, char* buffer, long* index) {
 arch_native_t arch_compile(ctr_header_t header, FILE* input) {
     arch_native_t native;
 
+    // get external symbol table
+    unsigned int external_count = ctr_external_count(header);
+    ctr_external_symbol_t externals[external_count];
+    for (unsigned int i = 0; i < external_count; i++) {
+        externals[i] = ctr_external_read(input, header, i);
+    }
+
     // alloc space
     size_t text_size = header.text_segment_size + header.symbol_segment_size / CTR_SYMBOL_SIZE * 8;
     native.text = malloc(text_size);
@@ -64,9 +71,18 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input) {
             }
             case BC_SYNCE:
             case BC_ASYNCE: {
-                write1(X86_CALL, native.text, &index);
-                void* addr = call_addr(native.text + index + 4, arch_print);
-                write4((unsigned int)addr, native.text, &index);
+                if (bc.argument >= external_count) {
+                    fprintf(stderr, "external symbol not fount: %i\n", bc.argument);
+                    continue;
+                }
+                ctr_external_symbol_t* symbol = &externals[bc.argument];
+                if (strcmp(symbol->name, "print") == 0) {
+                    write1(X86_CALL, native.text, &index);
+                    void* addr = call_addr(native.text + index + 4, arch_print);
+                    write4((unsigned int)addr, native.text, &index);
+                } else {
+                    write1(X86_NOP, native.text, &index);
+                }
                 break;
            }
            default: {
