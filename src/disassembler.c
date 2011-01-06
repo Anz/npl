@@ -8,7 +8,8 @@
 
 void print_usage();
 list_t collect_external_symbols(FILE* file, ctr_header_t header);
-void print_external_symbol_segment(list_t external_symbol);
+void print_header(ctr_header_t header);
+void print_external_symbol_segment(list_t external_symbol, ctr_header_t header);
 
 int main(int argc, char* argv[]) {
 
@@ -31,13 +32,7 @@ int main(int argc, char* argv[]) {
     ctr_header_t header = ctr_read_header(file);
 
     // print header
-    printf("header segment:\n");
-    printf("magic number                   = 0x%X\n", header.magic_number);
-    printf("container version              = %u\n", header.container_version);
-    printf("content version                = %u\n", header.content_version);
-    printf("symbol segment size            = %u Bytes\n", header.symbol_segment_size);
-    printf("external symbol segment size   = %u Bytes\n", header.external_symbol_segment_size);
-    printf("text segment size              = %u Bytes\n", header.text_segment_size);
+    print_header(header);
 
     // check magic number
     if (header.magic_number != CTR_MAGIC_NUMBER) {
@@ -49,22 +44,24 @@ int main(int argc, char* argv[]) {
     // print symbols
     map_t symbols;
     map_init(&symbols, CTR_SYMBOL_NAME_SIZE+1);
-    printf("symbol segment:\n");
+    printf("symbol segment:\n\n");
+    printf("%10s\taddr     \tname\n\n", "");
     ctr_symbol_t* symbol_list = ctr_symbol_read(file, header);
     unsigned int symbol_count = header.symbol_segment_size / CTR_SYMBOL_SIZE;
     for(unsigned int index = 0; index < symbol_count; index++) {
         ctr_symbol_t* symbol = &symbol_list[index];
         map_addi(&symbols, symbol->addr, symbol->name);
-        printf("0x%08X = \"%s\"\n", symbol->addr, symbol->name);
+        printf("%08X:\t%08X \t%s\n", CTR_HEADER_SIZE + index * CTR_SYMBOL_SIZE, symbol->addr, symbol->name);
     }
     printf("\n");
 
     // print external symbols
     list_t external_symbols = collect_external_symbols(file, header);
-    print_external_symbol_segment(external_symbols);
+    print_external_symbol_segment(external_symbols, header);
 
     // print text
-    printf("text segment:\n");
+    printf("text segment:\n\n");
+    printf("%11s\taddr      \tbinary        \tname\targument\n\n", "");
     unsigned int text_count = header.text_segment_size / BC_OPCODE_SIZE;
     char opcode[BC_OPCODE_SIZE];
     long offset = CTR_HEADER_SIZE + header.symbol_segment_size + header.external_symbol_segment_size;
@@ -80,7 +77,8 @@ int main(int argc, char* argv[]) {
         char instruction = opcode[0];
         int arg = swap_endian(*(int*)&opcode[1]);
 
-        printf(" %08X:\t%02X %02X %02X %02X %02X\t\t%s\t",
+        printf(" %08X:\t%08X\t%02X %02X %02X %02X %02X\t%s\t",
+                offset + i * BC_OPCODE_SIZE,
                 i, 
                 char2int(opcode[0]), 
                 char2int(opcode[1]), 
@@ -149,14 +147,29 @@ list_t collect_external_symbols(FILE* file, ctr_header_t header) {
     return symbols;
 }
 
-void print_external_symbol_segment(list_t external_symbol) {
+void print_header(ctr_header_t header) {
+    printf("header segment:\n\n");
+    printf("%08X:\tmagic number 0x%X\n", 0, header.magic_number);
+    printf("%08X:\tcontainer v%u\n", 4,  header.container_version);
+    printf("%08X:\tcontent   v%u\n", 8, header.content_version);
+    printf("%08X:\tsymbol    %4.2f KB (%u Bytes)\n", 12, header.symbol_segment_size / 1024.0, header.symbol_segment_size);
+    printf("%08X:\texternal  %4.2f KB (%u Bytes)\n", 16, header.external_symbol_segment_size / 1024.0, header.external_symbol_segment_size);
+    printf("%08X:\ttext      %4.2f KB (%u Bytes)\n", 20, header.text_segment_size / 1024.0, header.text_segment_size);
+}
+
+void print_external_symbol_segment(list_t external_symbol, ctr_header_t header) {
+    size_t offset = CTR_HEADER_SIZE + header.symbol_segment_size;
+
     printf("external symbol segment:\n\n");
+    printf("%10s\tname\n\n", "");
 
     list_node symbol = list_first(&external_symbol);
+    int i = 0;
     while (symbol != NULL) {
         char* name = list_data(symbol);
-        printf("<%s>\n", name);
+        printf("%08X:\t%s\n", offset + i, name);
         symbol = list_next(symbol);
+        i += CTR_SYMBOL_NAME_SIZE;
     }
     printf("\n");
 }
