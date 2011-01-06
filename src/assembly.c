@@ -3,6 +3,7 @@
 #include "bytecode.h"
 #include "util.h"
 #include "map.h"
+#include "list.h"
 
 #define READ_BUFFER_SIZE 1024
 #define SEGMENT_BUFFER_SIZE 1024
@@ -16,7 +17,7 @@ void jump_to_text_seg(FILE* file) {
     }
 }
 
-size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols) {
+size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, list_t* external_symbols) {
     // jump to text seg
     jump_to_text_seg(input);
 
@@ -49,6 +50,14 @@ size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols) {
         }
 
         if (instruction != NULL) {
+            char code = bc_asm2op(instruction);
+            if (code == BC_SYNCE || code == BC_ASYNCE) {
+                char* arg = strtok(NULL, " \t\r\n");
+                char name[CTR_SYMBOL_NAME_SIZE+1];
+                memset(name, 0, CTR_SYMBOL_NAME_SIZE+1);
+                strcpy(name, arg);
+                list_add(external_symbols, name);
+            }
             addr++;
         }
     }
@@ -64,7 +73,20 @@ void assembler(FILE* input, FILE* output) {
     // write symbol
     map_t symbols;
     map_init(&symbols, sizeof(ctr_addr));
-    size_t symbol_size = write_symbol_segment(input, output, &symbols);
+    list_t external_symbols;
+    list_init(&external_symbols, CTR_SYMBOL_NAME_SIZE+1);
+    size_t symbol_size = write_symbol_segment(input, output, &symbols, &external_symbols);
+
+    // write external symbol
+    list_node external_symbol = list_first(&external_symbols);
+    size_t external_symbol_size = 0;
+    while (external_symbol != NULL) {
+        char* name = list_get(external_symbol);
+        printf("name es: %s\n", name);
+        fwrite(name, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
+        external_symbol = list_next(external_symbol);
+        external_symbol_size += CTR_SYMBOL_NAME_SIZE;
+    }
 
     // jump to text segment
     jump_to_text_seg(input);
@@ -109,12 +131,17 @@ void assembler(FILE* input, FILE* output) {
             text_size += BC_OPCODE_SIZE;
         }
     }
+
+    // release
+    map_release(&symbols);
+    list_release(&external_symbols);
+
     unsigned int header[] = {
         swap_endian(CTR_MAGIC_NUMBER),
         swap_endian(CTR_CONTAINER_VERSION),
         swap_endian(BC_BYTECODE_VERSION),
         swap_endian(symbol_size),
-        swap_endian(0),
+        swap_endian(external_symbol_size),
         swap_endian(text_size)
     };
     fseek(output, 0, SEEK_SET);

@@ -1,10 +1,10 @@
 include ../Makefile.common
 
-NAS= util.o assembly.o bytecode.o container.o map.o assembler.o
+NAS= util.o assembly.o bytecode.o container.o map.o list.o assembler.o
 NIS= util.o bytecode.o container.o map.o disassembler.o
-VM= util.o bytecode.o container.o job.o x86.o thread.o vm.o
+NVM= util.o bytecode.o container.o job.o x86.o thread.o vm.o
 
-all: nas nis vm
+all: nas nis nvm
 
 nas: ${NAS}
 	${CC} ${CFLAGS} -onas ${NAS}
@@ -12,8 +12,8 @@ nas: ${NAS}
 nis: ${NIS}
 	${CC} ${CFLAGS} -onis ${NIS}
 
-vm: ${VM}
-	${CC} ${CFLAGS} -onvm ${VM} -lpthread
+nvm: ${NVM}
+	${CC} ${CFLAGS} -onvm ${NVM} -lpthread
 
 %.o: ../src/%.c
 	${CC} ${CFLAGS} -c $<
