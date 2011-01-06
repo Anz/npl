@@ -121,7 +121,14 @@ void assembler(FILE* input, FILE* output) {
                 map_node_t* symbol = map_find(&symbols, arg1);
                 if (symbol != NULL) {
                     arg = swap_endian((*(ctr_addr*)symbol->value) - text_size / BC_OPCODE_SIZE);
-                    printf("ptr: %08X symbol: %08X result: %08X\n", text_size, (*(ctr_addr*)symbol->value), arg);
+                }
+            } else if ((instruction == BC_SYNCE || instruction == BC_ASYNCE) && arg1 != NULL) {
+                char name[CTR_SYMBOL_NAME_SIZE+1];
+                memset(name, 0, CTR_SYMBOL_SIZE+1);
+                strcpy(name, arg1);
+                int index = list_find(&external_symbols, (void*)name);
+                if (index >= 0) {
+                    arg = swap_endian(index);
                 }
             }
 

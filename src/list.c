@@ -56,6 +56,19 @@ list_node list_get(list_t* list, unsigned int index) {
     return NULL;
 }
 
+int list_find(list_t* list, void* data) {
+    list_node node = list_first(list);
+    int index = 0;
+    while (node != NULL) {
+        if (memcmp(list_data(node), data, list->node_size) == 0) {
+            return index;
+        }
+        node = list_next(node);
+        index++;
+    }
+    return -1;
+
+}
 
 list_node list_first(list_t* list) {
     return list->first;
