@@ -62,49 +62,43 @@ int main(int argc, char* argv[]) {
     // print text
     printf("text segment:\n\n");
     printf("%11s\taddr      \tbinary        \tname\targument\n\n", "");
-    unsigned int text_count = header.text_segment_size / BC_OPCODE_SIZE;
-    char opcode[BC_OPCODE_SIZE];
-    long offset = CTR_HEADER_SIZE + header.symbol_segment_size + header.external_symbol_segment_size;
-    fseek(file, offset, SEEK_SET);
+    unsigned int text_count = ctr_text_count(header);
+    int offset = ctr_text_offset(header);
     for(unsigned int i = 0; i < text_count; i++) {
-        fread(opcode, sizeof(char), BC_OPCODE_SIZE, file);
+        ctr_bytecode_t bc = ctr_text_read(file, header, i);
 
         map_node_t* symbol = map_findi(&symbols, i);
         if (symbol != NULL) {
             printf("%08X <%s>:\n", i, (char*)symbol->value);
         }
 
-        char instruction = opcode[0];
-        int arg = swap_endian(*(int*)&opcode[1]);
+        printf(" %08X:\t", offset + i * BC_OPCODE_SIZE);
+        printf("%08X\t", i);
+        printf("%02X ", char2int(bc.instruction));
+        printf("%02X ", char2int(int2char(bc.argument, 0)));
+        printf("%02X ", char2int(int2char(bc.argument, 1)));
+        printf("%02X ", char2int(int2char(bc.argument, 2)));
+        printf("%02X\t", char2int(int2char(bc.argument, 3)));
+        printf("%s\t", bc_op2asm(bc.instruction));
 
-        printf(" %08X:\t%08X\t%02X %02X %02X %02X %02X\t%s\t",
-                offset + i * BC_OPCODE_SIZE,
-                i, 
-                char2int(opcode[0]), 
-                char2int(opcode[1]), 
-                char2int(opcode[2]), 
-                char2int(opcode[3]), 
-                char2int(opcode[4]),
-                bc_op2asm(opcode[0]));
-
-        switch (instruction) {
+        switch (bc.instruction) {
             case BC_SYNC:
             case BC_ASYNC: {
-                map_node_t* symbol_node = map_findi(&symbols, i + arg);
+                map_node_t* symbol_node = map_findi(&symbols, i + bc.argument);
                 if (symbol_node != NULL) {
                     printf("%s\n", (char*)symbol_node->value);
                 } else {
-                    printf("0x%08X\n", arg);
+                    printf("0x%08X\n", bc.argument);
                 }
                 break;
             }
             case BC_SYNCE:
             case BC_ASYNCE: {
-                list_node symbol = list_get(&external_symbols, arg);
+                list_node symbol = list_get(&external_symbols, bc.argument);
                 if (symbol != NULL) {
                     printf("%s\n", (char*)list_data(symbol));
                 } else {
-                    printf("0x%08X\n", arg);
+                    printf("0x%08X\n", bc.argument);
                 }
                 break;
             }

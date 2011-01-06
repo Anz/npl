@@ -50,3 +50,28 @@ int ctr_symbol_find(ctr_symbol_t* symbols, ctr_header_t header, ctr_addr addr) {
     return -1;
 }
 
+ctr_bytecode_t ctr_text_read(FILE* file, ctr_header_t header, unsigned int index) {
+    unsigned int offset = ctr_text_offset(header) + index * BC_OPCODE_SIZE;
+
+    // set cursor
+    fseek(file, offset, SEEK_SET);
+
+    // read
+    char buffer[BC_OPCODE_SIZE];
+    fread(buffer, BC_OPCODE_SIZE, 1, file);
+
+    // fill data
+    ctr_bytecode_t bc;
+    bc.instruction = buffer[0];
+    bc.argument = swap_endian(*(int*)&buffer[1]);
+
+    return bc;
+}
+
+unsigned int ctr_text_count(ctr_header_t header) {
+    return header.text_segment_size / BC_OPCODE_SIZE;
+}
+
+unsigned int ctr_text_offset(ctr_header_t header) {
+    return CTR_HEADER_SIZE + header.symbol_segment_size + header.external_symbol_segment_size;
+}

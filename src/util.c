@@ -37,3 +37,9 @@ unsigned int char2int(char value) {
     unsigned int new_value = value;
     return (new_value << 24) >> 24; 
 }
+
+char int2char(int value, unsigned int index) {
+    value = swap_endian(value);
+    char* ptr = &value;
+    return ptr[index];
+}
