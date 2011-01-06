@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
             default: {
-                printf("0x%08X\n", arg);
+                printf("\n");
                 break;
             }
         }
