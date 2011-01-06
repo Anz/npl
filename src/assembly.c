@@ -81,7 +81,7 @@ void assembler(FILE* input, FILE* output) {
     list_node external_symbol = list_first(&external_symbols);
     size_t external_symbol_size = 0;
     while (external_symbol != NULL) {
-        char* name = list_get(external_symbol);
+        char* name = list_data(external_symbol);
         printf("name es: %s\n", name);
         fwrite(name, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
         external_symbol = list_next(external_symbol);
@@ -105,9 +105,9 @@ void assembler(FILE* input, FILE* output) {
         char* colon = strchr(line, ':');
         char* mnemonic = NULL;
         if (colon == NULL) {
-            mnemonic = strtok(line, " \t\r\n");
+            mnemonic = strtok(line, ", \t\r\n");
         } else {
-            mnemonic = strtok(colon+1, " \t\r\n"); 
+            mnemonic = strtok(colon+1, ", \t\r\n"); 
         }
 
 
@@ -116,7 +116,7 @@ void assembler(FILE* input, FILE* output) {
             char instruction = bc_asm2op(mnemonic);
             unsigned int arg = 0x0;
 
-            char* arg1 = strtok(NULL, " ,\t\r\n"); 
+            char* arg1 = strtok(NULL, ", \t\r\n"); 
             if (instruction == BC_SYNC && arg1 != NULL) {
                 map_node_t* symbol = map_find(&symbols, arg1);
                 if (symbol != NULL) {

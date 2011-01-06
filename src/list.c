@@ -39,9 +39,23 @@ void list_add(list_t* list, void* data) {
     list->count++;
 }
 
-void* list_get(list_node node) {
+void* list_data(list_node node) {
     return node + sizeof(void*);
 }
+
+list_node list_get(list_t* list, unsigned int index) {
+    list_node node = list_first(list);
+    unsigned int count = 0;
+    while (node != NULL) {
+        if (count == index) {
+            return node;
+        }
+        node = list_next(node);
+        count++;
+    }
+    return NULL;
+}
+
 
 list_node list_first(list_t* list) {
     return list->first;

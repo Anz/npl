@@ -4,8 +4,11 @@
 #include <bytecode.h>
 #include "util.h"
 #include "map.h"
+#include "list.h"
 
 void print_usage();
+list_t collect_external_symbols(FILE* file, ctr_header_t header);
+void print_external_symbol_segment(list_t external_symbol);
 
 int main(int argc, char* argv[]) {
 
@@ -60,6 +63,10 @@ int main(int argc, char* argv[]) {
     }
     printf("\n");
 
+    // print external symbols
+    list_t external_symbols = collect_external_symbols(file, header);
+    print_external_symbol_segment(external_symbols);
+
     // print text
     printf("text segment:\n");
     unsigned int text_count = header.text_segment_size / BC_OPCODE_SIZE;
@@ -102,6 +109,16 @@ int main(int argc, char* argv[]) {
                 }
                 break;
             }
+            case BC_SYNCE:
+            case BC_ASYNCE: {
+                list_node symbol = list_get(&external_symbols, arg);
+                if (symbol != NULL) {
+                    printf("%s\n", (char*)list_data(symbol));
+                } else {
+                    printf("0x%08X\n", arg);
+                }
+                break;
+            }
             default: {
                 printf("0x%08X\n", arg);
                 break;
@@ -110,10 +127,45 @@ int main(int argc, char* argv[]) {
     }
     printf("\n");
 
+    // release
+    list_release(&external_symbols);
+
     fclose(file);
     return 0;
 }
 
 void print_usage() {
     printf("usage: nis [options] <input>\n");
+}
+
+list_t collect_external_symbols(FILE* file, ctr_header_t header) {
+    list_t symbols;
+    list_init(&symbols, CTR_SYMBOL_SIZE+1);
+
+    long offset = CTR_HEADER_SIZE + header.symbol_segment_size;
+    size_t size = header.external_symbol_segment_size;
+
+    // set cursor to segement start
+    fseek(file, offset, SEEK_SET);
+
+    // read line by line
+    char symbol[CTR_SYMBOL_NAME_SIZE+1];
+    symbol[CTR_SYMBOL_NAME_SIZE] = '\0';
+    for (size_t i = 0; i < size; i += CTR_SYMBOL_NAME_SIZE) {
+        fread(symbol, sizeof(char), CTR_SYMBOL_NAME_SIZE, file);
+        list_add(&symbols, symbol);
+    };
+    return symbols;
+}
+
+void print_external_symbol_segment(list_t external_symbol) {
+    printf("external symbol segment:\n\n");
+
+    list_node symbol = list_first(&external_symbol);
+    while (symbol != NULL) {
+        char* name = list_data(symbol);
+        printf("<%s>\n", name);
+        symbol = list_next(symbol);
+    }
+    printf("\n");
 }

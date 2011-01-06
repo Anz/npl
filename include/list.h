@@ -14,7 +14,8 @@ typedef struct list {
 
 void list_init(list_t* list, size_t data_size);
 void list_add(list_t* list, void* data);
-void* list_get(list_node node);
+void* list_data(list_node node);
+list_node list_get(list_t* list, unsigned int index);
 list_node list_first(list_t* list);
 list_node list_next(list_node iterator);
 void list_release(list_t* list);
