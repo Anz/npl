@@ -52,11 +52,13 @@ size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, list_t* e
         if (instruction != NULL) {
             char code = bc_asm2op(instruction);
             if (code == BC_SYNCE || code == BC_ASYNCE) {
-                char* arg = strtok(NULL, " \t\r\n");
+                char* arg = strtok(NULL, " ,\t\r\n");
                 char name[CTR_SYMBOL_NAME_SIZE+1];
                 memset(name, 0, CTR_SYMBOL_NAME_SIZE+1);
                 strcpy(name, arg);
-                list_add(external_symbols, name);
+                if (list_find(external_symbols, name) < 0) {
+                    list_add(external_symbols, name);
+                }
             }
             addr++;
         }
@@ -121,6 +123,8 @@ void assembler(FILE* input, FILE* output) {
                 map_node_t* symbol = map_find(&symbols, arg1);
                 if (symbol != NULL) {
                     arg = swap_endian((*(ctr_addr*)symbol->value) - text_size / BC_OPCODE_SIZE);
+                } else {
+                    arg = 0xFFFFFFFF;
                 }
             } else if ((instruction == BC_SYNCE || instruction == BC_ASYNCE) && arg1 != NULL) {
                 char name[CTR_SYMBOL_NAME_SIZE+1];
@@ -129,6 +133,8 @@ void assembler(FILE* input, FILE* output) {
                 int index = list_find(&external_symbols, (void*)name);
                 if (index >= 0) {
                     arg = swap_endian(index);
+                } else {
+                    arg = 0xFFFFFFFF;
                 }
             }
 
