@@ -38,37 +38,11 @@ typedef struct ctr_external_symbol {
 } ctr_external_symbol_t;
 
 
-// container segment type
-typedef struct ctr_segment {
-    char* data;
-    size_t size;
-} ctr_segment_t;
-
 // basic read
 ctr_header_t ctr_read_header(FILE* file);
-ctr_segment_t ctr_read_symbol_segment(FILE* file, ctr_header_t header);
-//ctr_segment_t ctr_read_data_segment(FILE* file, ctr_header_t header);
-//ctr_segment_t ctr_read_text_segment(FILE* file, ctr_header_t header);
-
-// basic write
-//void ctr_write_segment(FILE* file, ctr_segment_t symbol, ctr_segment_t data, ctr_segment_t text);
 
 // symbol segment functions
 ctr_symbol_t* ctr_symbol_read(FILE* stream, ctr_header_t header);
 int ctr_symbol_find(ctr_symbol_t* symbols, ctr_header_t header, ctr_addr addr);
 
-unsigned int ctr_symbol_count(ctr_segment_t segment);
-ctr_addr ctr_symbol_get_addr(ctr_segment_t segment, unsigned int index);
-void ctr_symbol_set_addr(ctr_segment_t segment, unsigned int index, ctr_addr addr);
-void ctr_symbol_get_name(ctr_segment_t segment, unsigned int index, char* name);
-void ctr_symbol_set_name(ctr_segment_t segment, unsigned int index, char* name);
-//void ctr_symbol_resize_segment(ctr_segment_t* segment, unsigned int count);
-int ctr_symbol_find_by_addr(ctr_segment_t segment, ctr_addr addr);
-
-// text segment functions
-/*unsigned int ctr_text_count(ctr_segment_t segment);
-char ctr_text_get_instruction(ctr_segment_t segment, unsigned int index);
-void ctr_text_set_instruction(ctr_segment_t segment, unsigned int index, char instruction);
-void ctr_text_resize_segment(ctr_segment_t* segment, unsigned int count);
-*/
 #endif

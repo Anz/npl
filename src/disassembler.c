@@ -50,16 +50,12 @@ int main(int argc, char* argv[]) {
     map_t symbols;
     map_init(&symbols, CTR_SYMBOL_NAME_SIZE+1);
     printf("symbol segment:\n");
-    ctr_segment_t symbol_segment = ctr_read_symbol_segment(file, header);
-    unsigned int symbol_count = ctr_symbol_count(symbol_segment);
+    ctr_symbol_t* symbol_list = ctr_symbol_read(file, header);
+    unsigned int symbol_count = header.symbol_segment_size / CTR_SYMBOL_SIZE;
     for(unsigned int index = 0; index < symbol_count; index++) {
-        char name[CTR_SYMBOL_NAME_SIZE+1];
-        ctr_symbol_get_name(symbol_segment, index, name);
-        ctr_addr addr = ctr_symbol_get_addr(symbol_segment, index);
-        char addr_key[9];
-        sprintf(addr_key, "%x", addr);
-        map_add(&symbols, addr_key, name); 
-        printf("0x%08X = \"%s\"\n", addr, name);
+        ctr_symbol_t* symbol = &symbol_list[index];
+        map_addi(&symbols, symbol->addr, symbol->name);
+        printf("0x%08X = \"%s\"\n", symbol->addr, symbol->name);
     }
     printf("\n");
 
@@ -76,12 +72,9 @@ int main(int argc, char* argv[]) {
     for(unsigned int i = 0; i < text_count; i++) {
         fread(opcode, sizeof(char), BC_OPCODE_SIZE, file);
 
-        int symbol = ctr_symbol_find_by_addr(symbol_segment, i);
-
-        if (symbol != -1) {
-            char name[CTR_SYMBOL_NAME_SIZE+1];
-            ctr_symbol_get_name(symbol_segment, symbol, name);
-            printf("%08X <%s>:\n", i, name);
+        map_node_t* symbol = map_findi(&symbols, i);
+        if (symbol != NULL) {
+            printf("%08X <%s>:\n", i, (char*)symbol->value);
         }
 
         char instruction = opcode[0];
@@ -99,9 +92,7 @@ int main(int argc, char* argv[]) {
         switch (instruction) {
             case BC_SYNC:
             case BC_ASYNC: {
-                char addr_key[9]; 
-                sprintf(addr_key, "%x", i + arg);
-                map_node_t* symbol_node = map_find(&symbols, addr_key);
+                map_node_t* symbol_node = map_findi(&symbols, i + arg);
                 if (symbol_node != NULL) {
                     printf("%s\n", (char*)symbol_node->value);
                 } else {

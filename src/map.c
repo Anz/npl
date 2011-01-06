@@ -68,7 +68,13 @@ map_node_t* map_find(map_t* map, char* key) {
    return node_find(map->root, key);
 }
 
-// find
+map_node_t* map_findi(map_t* map, int key) {
+    char ckey[9];
+    sprintf(ckey, "%x", key);
+    return map_find(map, ckey);
+}
+
+// add
 void node_add(map_node_t* node, char* key, void* value, size_t size) {
     int compare = strcmp(node->key, key);
     if (compare == 0) { // equal
@@ -100,6 +106,12 @@ void map_add(map_t* map, char* key, void* value) {
     } else {
         node_add(map->root, key, value, map->node_size);
     }
+}
+
+void map_addi(map_t* map, int key, void* value) {
+    char ckey[9];
+    sprintf(ckey, "%x", key);
+    map_add(map, ckey, value);
 }
 
 // print tree

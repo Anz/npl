@@ -21,7 +21,9 @@ typedef struct map {
 void map_init(map_t* map, size_t node_size);
 void map_release(map_t* map);
 map_node_t* map_find(map_t* map, char* key);
+map_node_t* map_findi(map_t* map, int key);
 void map_add(map_t* map, char* key, void* value);
+void map_addi(map_t* map, int key, void* value);
 
 void map_print_tree(map_t* map);
 
