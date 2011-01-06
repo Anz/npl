@@ -1,30 +1,42 @@
 # comment
+.symbol
+    main
+    min
+    max
+
 .data
 
 .text
-main: name first               
-                        arg name
-                        arg first
-                        sync init
-                        arg name
-                        arg first
-                        cmp 1
-                        ret 0
-                        ret 1
-min: a b              
-                        arg a
-                        arg b
-                        sync less_than, result
-                        arg result
-                        cmp 1
-                        ret a
-                        ret b
-max: a b              
-                        arg a
-                        arg b
-                        sync greater_than, result
-                        arg result
-                        cmp 1
-                        ret a
-                        ret b
+main:
+            enter args
+            synce print
+            synce print
+            synce print
+            synce integer, i
+            arg i
+            arg 32
+            synce integer_set
+            arg i
+            arg 42
+            sync min, low
+            arg i
+            arg 42
+            sync max, high
+            ret 0
 
+min:
+            enter a, b
+            cmp a, b
+            jle min_ret_a
+            jg min_ret_b
+min_ret_a:  ret a
+min_ret_b:  ret b
+
+max:
+            enter a, b
+            cmp a, b
+            jle min_ret_a
+            jg min_ret_b
+            sync min
+max_ret_a:  ret a
+max_ret_b:  ret b
