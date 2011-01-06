@@ -40,6 +40,6 @@ unsigned int char2int(char value) {
 
 char int2char(int value, unsigned int index) {
     value = swap_endian(value);
-    char* ptr = &value;
+    char* ptr = (char*)&value;
     return ptr[index];
 }

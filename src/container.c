@@ -24,30 +24,54 @@ ctr_header_t ctr_read_header(FILE* file) {
 
    return header;
 }
+// symbol segment functions
+ctr_symbol_t ctr_symbol_read(FILE* file, unsigned int index) {
+    unsigned int offset = ctr_symbol_offset() + index * CTR_SYMBOL_SIZE;
 
-// read symbol segment into array
-ctr_symbol_t* ctr_symbol_read(FILE* stream, ctr_header_t header) {
-    int count = header.symbol_segment_size / CTR_SYMBOL_SIZE;
-    ctr_symbol_t* symbols = calloc(count, sizeof(ctr_symbol_t));
-    fseek(stream, CTR_HEADER_SIZE, SEEK_SET);
-    for (int i = 0; i < count; i++) {
-        char buffer[CTR_SYMBOL_SIZE];
-        fread(buffer, sizeof(char), CTR_SYMBOL_SIZE, stream);
-        symbols[i].addr = swap_endian(*(unsigned int*)buffer);
-        memcpy(symbols[i].name, &buffer[4], CTR_SYMBOL_NAME_SIZE);
-    }
-    return symbols;
+    // set cursor
+    fseek(file, offset, SEEK_SET);
+
+    // read
+    char buffer[CTR_SYMBOL_SIZE];
+    fread(buffer, CTR_SYMBOL_SIZE, 1, file);
+
+    // fill data
+    ctr_symbol_t symbol;
+    symbol.addr = swap_endian(*(int*)buffer);
+    memcpy(symbol.name, &buffer[4], CTR_SYMBOL_NAME_SIZE);
+    symbol.name[CTR_SYMBOL_NAME_SIZE] = '\0';
+
+    return symbol;
 }
 
-// find symbol in array by addr
-int ctr_symbol_find(ctr_symbol_t* symbols, ctr_header_t header, ctr_addr addr) {
-    int count = header.symbol_segment_size / CTR_SYMBOL_SIZE;
-    for (int i = 0; i < count; i++) {
-        if (symbols[i].addr == addr) {
-            return i;
-        }
-    }
-    return -1;
+unsigned int ctr_symbol_count(ctr_header_t header) {
+    return header.symbol_segment_size / CTR_SYMBOL_SIZE;
+}
+
+unsigned int ctr_symbol_offset() {
+    return CTR_HEADER_SIZE;
+}
+
+// external symbol segment functions
+ctr_external_symbol_t ctr_external_read(FILE* file, ctr_header_t header, unsigned int index) {
+    unsigned int offset = ctr_external_offset(header) + index * CTR_SYMBOL_NAME_SIZE;
+
+    // set cursor
+    fseek(file, offset, SEEK_SET);
+
+    // read
+    ctr_external_symbol_t symbol;
+    fread(symbol.name, CTR_SYMBOL_SIZE, 1, file);
+    symbol.name[CTR_SYMBOL_NAME_SIZE] = '\0';
+    return symbol;
+}
+
+unsigned int ctr_external_count(ctr_header_t header) {
+    return header.external_symbol_segment_size / CTR_SYMBOL_NAME_SIZE;
+}
+
+unsigned int ctr_external_offset(ctr_header_t header) {
+    return CTR_HEADER_SIZE + header.symbol_segment_size;
 }
 
 ctr_bytecode_t ctr_text_read(FILE* file, ctr_header_t header, unsigned int index) {

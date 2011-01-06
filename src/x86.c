@@ -37,13 +37,6 @@ void write4(unsigned int data, char* buffer, long* index) {
 arch_native_t arch_compile(ctr_header_t header, FILE* input) {
     arch_native_t native;
 
-    // read symbols
-    ctr_symbol_t* symbols = ctr_symbol_read(input, header);
-
-    // jump to text segment
-    long text_offset = CTR_HEADER_SIZE + header.symbol_segment_size + header.external_symbol_segment_size;
-    fseek(input, text_offset, SEEK_SET);
-
     // alloc space
     size_t text_size = header.text_segment_size + header.symbol_segment_size / CTR_SYMBOL_SIZE * 8;
     native.text = malloc(text_size);
@@ -52,21 +45,10 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input) {
     long index = 0;
 
     // compile to x86 code
-    char opcode[BC_OPCODE_SIZE];
-    char* instruction = opcode;
-    unsigned int* arg = (unsigned int*)&opcode[1];
-    int count = header.text_segment_size / BC_OPCODE_SIZE;
-    for(int i = 0; i < count; i++) {
-        /*if (ctr_symbol_find(symbols, header, i*BC_OPCODE_SIZE) >= 0) {
-            if (i > 0) {
-                write1(X86_LEAVE, native.text, &index);
-                write1(X86_RET, native.text, &index);
-            }
-            write4(X86_ENTER, native.text, &index);
-        }*/
-
-        fread(opcode, sizeof(char), sizeof(opcode), input);
-        switch(*instruction) {
+    unsigned int count = ctr_text_count(header);
+    for(unsigned int i = 0; i < count; i++) {
+        ctr_bytecode_t bc = ctr_text_read(input, header, i);
+        switch(bc.instruction) {
             case BC_ENTER: {
                 write4(X86_ENTER, native.text, &index);
                 break;
@@ -95,9 +77,6 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input) {
     }
     write1(X86_LEAVE, native.text, &index);
     write1(X86_RET, native.text, &index);
-
-    // release symbol
-    free(symbols);
 
     char* text = native.text;
     for (int i = 0; text[i] != 0;) {

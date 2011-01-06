@@ -8,8 +8,11 @@
 
 void print_usage();
 list_t collect_external_symbols(FILE* file, ctr_header_t header);
+map_t collect_symbols(FILE* file, ctr_header_t header);
 void print_header(ctr_header_t header);
+void print_symbols(FILE* file, ctr_header_t header);
 void print_external_symbol_segment(list_t external_symbol, ctr_header_t header);
+void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* external_symbols);
 
 int main(int argc, char* argv[]) {
 
@@ -42,24 +45,90 @@ int main(int argc, char* argv[]) {
     printf("\n");
 
     // print symbols
-    map_t symbols;
-    map_init(&symbols, CTR_SYMBOL_NAME_SIZE+1);
-    printf("symbol segment:\n\n");
-    printf("%10s\taddr     \tname\n\n", "");
-    ctr_symbol_t* symbol_list = ctr_symbol_read(file, header);
-    unsigned int symbol_count = header.symbol_segment_size / CTR_SYMBOL_SIZE;
-    for(unsigned int index = 0; index < symbol_count; index++) {
-        ctr_symbol_t* symbol = &symbol_list[index];
-        map_addi(&symbols, symbol->addr, symbol->name);
-        printf("%08X:\t%08X \t%s\n", CTR_HEADER_SIZE + index * CTR_SYMBOL_SIZE, symbol->addr, symbol->name);
-    }
-    printf("\n");
-
+    map_t symbols = collect_symbols(file, header);
+    print_symbols(file, header);
+ 
     // print external symbols
     list_t external_symbols = collect_external_symbols(file, header);
     print_external_symbol_segment(external_symbols, header);
 
     // print text
+    print_text(file, header, &symbols, &external_symbols);
+
+    // release
+    list_release(&external_symbols);
+    map_release(&symbols);
+
+    fclose(file);
+    return 0;
+}
+
+void print_usage() {
+    printf("usage: nis [options] <input>\n");
+}
+
+map_t collect_symbols(FILE* file, ctr_header_t header) {
+    map_t symbols;
+    map_init(&symbols, CTR_SYMBOL_NAME_SIZE+1);
+    unsigned int symbol_count = ctr_symbol_count(header);
+    for(unsigned int index = 0; index < symbol_count; index++) {
+        ctr_symbol_t symbol = ctr_symbol_read(file, index);
+        map_addi(&symbols, symbol.addr, symbol.name);
+    }
+    return symbols;
+}
+
+list_t collect_external_symbols(FILE* file, ctr_header_t header) {
+    list_t symbols;
+    list_init(&symbols, sizeof(ctr_external_symbol_t));
+
+    unsigned int count = ctr_external_count(header);
+    for (unsigned int i = 0; i < count; i++) {
+        ctr_external_symbol_t symbol = ctr_external_read(file, header, i);
+        list_add(&symbols, symbol.name);
+    };
+    return symbols;
+}
+
+void print_header(ctr_header_t header) {
+    printf("header segment:\n\n");
+    printf("%08X:\tmagic number 0x%X\n", 0, header.magic_number);
+    printf("%08X:\tcontainer v%u\n", 4,  header.container_version);
+    printf("%08X:\tcontent   v%u\n", 8, header.content_version);
+    printf("%08X:\tsymbol    %4.2f KB (%u Bytes)\n", 12, header.symbol_segment_size / 1024.0, header.symbol_segment_size);
+    printf("%08X:\texternal  %4.2f KB (%u Bytes)\n", 16, header.external_symbol_segment_size / 1024.0, header.external_symbol_segment_size);
+    printf("%08X:\ttext      %4.2f KB (%u Bytes)\n", 20, header.text_segment_size / 1024.0, header.text_segment_size);
+}
+
+void print_symbols(FILE* file, ctr_header_t header) {
+    printf("symbol segment:\n\n");
+    printf("%10s\taddr     \tname\n\n", "");
+    unsigned int symbol_count = ctr_symbol_count(header);
+    for(unsigned int index = 0; index < symbol_count; index++) {
+        ctr_symbol_t symbol = ctr_symbol_read(file, index);
+        printf("%08X:\t%08X \t%s\n", CTR_HEADER_SIZE + index * CTR_SYMBOL_SIZE, symbol.addr, symbol.name);
+    }
+    printf("\n");
+}
+
+void print_external_symbol_segment(list_t external_symbol, ctr_header_t header) {
+    size_t offset = ctr_external_offset(header);
+
+    printf("external symbol segment:\n\n");
+    printf("%10s\tname\n\n", "");
+
+    list_node symbol = list_first(&external_symbol);
+    int i = 0;
+    while (symbol != NULL) {
+        char* name = list_data(symbol);
+        printf("%08X:\t%s\n", offset + i, name);
+        symbol = list_next(symbol);
+        i += CTR_SYMBOL_NAME_SIZE;
+    }
+    printf("\n");
+}
+
+void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* external_symbols) {
     printf("text segment:\n\n");
     printf("%11s\taddr      \tbinary        \tname\targument\n\n", "");
     unsigned int text_count = ctr_text_count(header);
@@ -67,7 +136,7 @@ int main(int argc, char* argv[]) {
     for(unsigned int i = 0; i < text_count; i++) {
         ctr_bytecode_t bc = ctr_text_read(file, header, i);
 
-        map_node_t* symbol = map_findi(&symbols, i);
+        map_node_t* symbol = map_findi(symbols, i);
         if (symbol != NULL) {
             printf("%08X <%s>:\n", i, (char*)symbol->value);
         }
@@ -84,7 +153,7 @@ int main(int argc, char* argv[]) {
         switch (bc.instruction) {
             case BC_SYNC:
             case BC_ASYNC: {
-                map_node_t* symbol_node = map_findi(&symbols, i + bc.argument);
+                map_node_t* symbol_node = map_findi(symbols, i + bc.argument);
                 if (symbol_node != NULL) {
                     printf("%s\n", (char*)symbol_node->value);
                 } else {
@@ -94,7 +163,7 @@ int main(int argc, char* argv[]) {
             }
             case BC_SYNCE:
             case BC_ASYNCE: {
-                list_node symbol = list_get(&external_symbols, bc.argument);
+                list_node symbol = list_get(external_symbols, bc.argument);
                 if (symbol != NULL) {
                     printf("%s\n", (char*)list_data(symbol));
                 } else {
@@ -107,63 +176,6 @@ int main(int argc, char* argv[]) {
                 break;
             }
         }
-    }
-    printf("\n");
-
-    // release
-    list_release(&external_symbols);
-
-    fclose(file);
-    return 0;
-}
-
-void print_usage() {
-    printf("usage: nis [options] <input>\n");
-}
-
-list_t collect_external_symbols(FILE* file, ctr_header_t header) {
-    list_t symbols;
-    list_init(&symbols, CTR_SYMBOL_SIZE+1);
-
-    long offset = CTR_HEADER_SIZE + header.symbol_segment_size;
-    size_t size = header.external_symbol_segment_size;
-
-    // set cursor to segement start
-    fseek(file, offset, SEEK_SET);
-
-    // read line by line
-    char symbol[CTR_SYMBOL_NAME_SIZE+1];
-    symbol[CTR_SYMBOL_NAME_SIZE] = '\0';
-    for (size_t i = 0; i < size; i += CTR_SYMBOL_NAME_SIZE) {
-        fread(symbol, sizeof(char), CTR_SYMBOL_NAME_SIZE, file);
-        list_add(&symbols, symbol);
-    };
-    return symbols;
-}
-
-void print_header(ctr_header_t header) {
-    printf("header segment:\n\n");
-    printf("%08X:\tmagic number 0x%X\n", 0, header.magic_number);
-    printf("%08X:\tcontainer v%u\n", 4,  header.container_version);
-    printf("%08X:\tcontent   v%u\n", 8, header.content_version);
-    printf("%08X:\tsymbol    %4.2f KB (%u Bytes)\n", 12, header.symbol_segment_size / 1024.0, header.symbol_segment_size);
-    printf("%08X:\texternal  %4.2f KB (%u Bytes)\n", 16, header.external_symbol_segment_size / 1024.0, header.external_symbol_segment_size);
-    printf("%08X:\ttext      %4.2f KB (%u Bytes)\n", 20, header.text_segment_size / 1024.0, header.text_segment_size);
-}
-
-void print_external_symbol_segment(list_t external_symbol, ctr_header_t header) {
-    size_t offset = CTR_HEADER_SIZE + header.symbol_segment_size;
-
-    printf("external symbol segment:\n\n");
-    printf("%10s\tname\n\n", "");
-
-    list_node symbol = list_first(&external_symbol);
-    int i = 0;
-    while (symbol != NULL) {
-        char* name = list_data(symbol);
-        printf("%08X:\t%s\n", offset + i, name);
-        symbol = list_next(symbol);
-        i += CTR_SYMBOL_NAME_SIZE;
     }
     printf("\n");
 }

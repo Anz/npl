@@ -34,7 +34,6 @@ typedef struct ctr_symbol {
 // external symbol
 typedef struct ctr_external_symbol {
     char name[CTR_SYMBOL_NAME_SIZE+1];
-    ctr_addr addr;
 } ctr_external_symbol_t;
 
 // instruction
@@ -47,8 +46,14 @@ typedef struct ctr_bytecode {
 ctr_header_t ctr_read_header(FILE* file);
 
 // symbol segment functions
-ctr_symbol_t* ctr_symbol_read(FILE* stream, ctr_header_t header);
-int ctr_symbol_find(ctr_symbol_t* symbols, ctr_header_t header, ctr_addr addr);
+ctr_symbol_t ctr_symbol_read(FILE* file, unsigned int index);
+unsigned int ctr_symbol_count(ctr_header_t header);
+unsigned int ctr_symbol_offset();
+
+// external symbol segment functions
+ctr_external_symbol_t ctr_external_read(FILE* file, ctr_header_t header, unsigned int index);
+unsigned int ctr_external_count(ctr_header_t header);
+unsigned int ctr_external_offset(ctr_header_t header);
 
 // text function
 ctr_bytecode_t ctr_text_read(FILE* file, ctr_header_t header, unsigned int index);
