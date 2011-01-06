@@ -39,7 +39,7 @@ size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols) {
             char* name = strtok(line, ": ");
 
             // add symbol to map
-            map_add(symbols, name, &symbol_addr);
+            map_add(symbols, name, &addr);
 
             // write to file
             fwrite(&symbol_addr, sizeof(char), CTR_ADDR_SIZE, output);
@@ -98,7 +98,8 @@ void assembler(FILE* input, FILE* output) {
             if (instruction == BC_SYNC && arg1 != NULL) {
                 map_node_t* symbol = map_find(&symbols, arg1);
                 if (symbol != NULL) {
-                    arg = text_size - (*(ctr_addr*)symbol->value);
+                    arg = swap_endian((*(ctr_addr*)symbol->value) - text_size / BC_OPCODE_SIZE);
+                    printf("ptr: %08X symbol: %08X result: %08X\n", text_size, (*(ctr_addr*)symbol->value), arg);
                 }
             }
 
