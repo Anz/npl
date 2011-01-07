@@ -13,7 +13,7 @@
 #define X86_RET 0xC3
 
 void arch_print() {
-    printf("moins asfd\n");
+    printf("arch_print\n");
 }
 
 void* call_addr(void* source, void* target) {
@@ -34,14 +34,21 @@ void write4(unsigned int data, char* buffer, long* index) {
     *index += 4; 
 }
 
-arch_native_t arch_compile(ctr_header_t header, FILE* input) {
+arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
     arch_native_t native;
 
     // get external symbol table
     unsigned int external_count = ctr_external_count(header);
-    ctr_external_symbol_t externals[external_count];
+    void* externals[external_count];
     for (unsigned int i = 0; i < external_count; i++) {
-        externals[i] = ctr_external_read(input, header, i);
+        ctr_external_symbol_t external = ctr_external_read(input, header, i);
+        map_node_t* function = map_find(library, external.name);
+        if (function == NULL) {
+            fprintf(stderr, "function not found: %s\n", external.name);
+            externals[i] = 0;
+            continue;
+        }
+        externals[i] = function->value;
     }
 
     // alloc space
@@ -75,14 +82,11 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input) {
                     fprintf(stderr, "external symbol not fount: %i\n", bc.argument);
                     continue;
                 }
-                ctr_external_symbol_t* symbol = &externals[bc.argument];
-                if (strcmp(symbol->name, "print") == 0) {
-                    write1(X86_CALL, native.text, &index);
-                    void* addr = call_addr(native.text + index + 4, arch_print);
-                    write4((unsigned int)addr, native.text, &index);
-                } else {
-                    write1(X86_NOP, native.text, &index);
-                }
+                void* function = externals[bc.argument];
+                write1(X86_CALL, native.text, &index);
+                void* addr = call_addr(native.text + index + 3, arch_print);
+                //void* addr = call_addr(native.text + index + 3, function);
+                write4((unsigned int)addr, native.text, &index);
                 break;
            }
            default: {
@@ -92,24 +96,6 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input) {
         }
     }
 
-    char* text = native.text;
-    for (int i = 0; text[i] != 0;) {
-        int size = 1;
-        for (int j = 0; j < size; j++) {
-            if (text[i+j] == (char)X86_CALL) {
-                size = 5;
-            } else if (text[i+j] == (char)0xC8) {
-                size = 4;
-            } else if (text[i+j] == (char)0xC9) {
-                size = 2;
-            }
-            unsigned int value = text[i+j];
-            value = (value << 24) >> 24;
-            printf("%02X ", value);
-        }
-        i += size;
-        printf("\n");
-    }
 
     return native;
 }

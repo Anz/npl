@@ -4,7 +4,14 @@
 #include "arch.h"
 #include "job.h"
 #include "thread.h"
+#include "map.h"
 #include <pthread.h>
+
+void print_arch_code(void* address);
+
+void print_wtf() {
+    printf("hello vm!\n");
+}
 
 int main(int argc, char* argv[]) {
 
@@ -34,8 +41,14 @@ int main(int argc, char* argv[]) {
     ctr_header_t header = ctr_read_header(module);
 
     // compile bytecode
-    arch_native_t native = arch_compile(header, module);
+    map_t library;
+    map_init(&library, sizeof(void*));
+    map_add(&library, "print", print_wtf);
+    map_add(&library, "integer", print_wtf);
+    map_add(&library, "integer_set", print_wtf);
+    arch_native_t native = arch_compile(header, module, &library);
     fclose(module);
+    print_arch_code(native.main);
 
     // create main job
     job_t main_job;
@@ -60,7 +73,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < thread_count; i++) {
         thread_join(&threads[i]);
     }
-    //native.main();
+    
 
     // releasep
     job_list_release(&jobs);
@@ -71,4 +84,25 @@ int main(int argc, char* argv[]) {
     pthread_exit(NULL);
 
     return 0;
+}
+
+void print_arch_code(void* address) {
+    char* text = (char*)address;
+    for (int i = 0; text[i] != 0;) {
+        int size = 1;
+        for (int j = 0; j < size; j++) {
+            if (text[i+j] == (char)0xE8 || text[i+j] == (char)0xff) {
+                size = 5;
+            } else if (text[i+j] == (char)0xC8) {
+                size = 4;
+            } else if (text[i+j] == (char)0xC9) {
+                size = 2;
+            }
+            unsigned int value = text[i+j];
+            value = (value << 24) >> 24;
+            printf("%02X ", value);
+        }
+        i += size;
+        printf("\n");
+    }
 }
