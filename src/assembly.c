@@ -84,7 +84,6 @@ void assembler(FILE* input, FILE* output) {
     size_t external_symbol_size = 0;
     while (external_symbol != NULL) {
         char* name = list_data(external_symbol);
-        printf("name es: %s\n", name);
         fwrite(name, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
         external_symbol = list_next(external_symbol);
         external_symbol_size += CTR_SYMBOL_NAME_SIZE;
