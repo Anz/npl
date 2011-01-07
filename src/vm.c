@@ -42,10 +42,11 @@ int main(int argc, char* argv[]) {
 
     // compile bytecode
     map_t library;
-    map_init(&library, sizeof(void*));
-    map_add(&library, "print", print_wtf);
-    map_add(&library, "integer", print_wtf);
-    map_add(&library, "integer_set", print_wtf);
+    int faddr = (int)&print_wtf;
+    map_init(&library, sizeof(int));
+    map_add(&library, "print", &faddr);
+    map_add(&library, "integer", &faddr);
+    map_add(&library, "integer_set", &faddr);
     arch_native_t native = arch_compile(header, module, &library);
     fclose(module);
     print_arch_code(native.main);

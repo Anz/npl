@@ -12,10 +12,6 @@
 #define X86_LEAVE 0xC9
 #define X86_RET 0xC3
 
-void arch_print() {
-    printf("arch_print\n");
-}
-
 void* call_addr(void* source, void* target) {
     if (source > target) {
         return (void*)0xFFFFFFFF - (source - target);
@@ -48,7 +44,7 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
             externals[i] = 0;
             continue;
         }
-        externals[i] = function->value;
+        memcpy(&externals[i], function->value, sizeof(int));
     }
 
     // alloc space
@@ -78,14 +74,13 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
             }
             case BC_SYNCE:
             case BC_ASYNCE: {
-                if (bc.argument >= external_count) {
+                if (bc.argument < 0 || bc.argument >= external_count) {
                     fprintf(stderr, "external symbol not fount: %i\n", bc.argument);
                     continue;
                 }
                 void* function = externals[bc.argument];
                 write1(X86_CALL, native.text, &index);
-                void* addr = call_addr(native.text + index + 3, arch_print);
-                //void* addr = call_addr(native.text + index + 3, function);
+                void* addr = call_addr(native.text + index + 3, function);
                 write4((unsigned int)addr, native.text, &index);
                 break;
            }
