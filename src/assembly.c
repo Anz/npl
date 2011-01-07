@@ -97,6 +97,7 @@ void assembler(FILE* input, FILE* output) {
     char line[READ_BUFFER_SIZE];
     int running = 1;
     while(!feof(input) && running) {
+        memset(line, 0, READ_BUFFER_SIZE);
         fgets(line, READ_BUFFER_SIZE, input);
 
         if (line[0] == ASM_SEGMENT) {
