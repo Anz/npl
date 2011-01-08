@@ -72,6 +72,10 @@ char bc_asm2op(char* assembly) {
         return BC_INIT;
     }
 
+    if (strcmp(BC_ASM_ARGV,assembly) == 0) {
+        return BC_ARGV;
+    }
+
     return -1;
 }
 
@@ -94,6 +98,7 @@ char* bc_op2asm(char opcode) {
         case BC_SYNCE: return BC_ASM_SYNCE;
         case BC_ASYNCE: return BC_ASM_ASYNCE;
         case BC_INIT: return BC_ASM_INIT;
+        case BC_ARGV: return BC_ASM_ARGV;
         default: return NULL;
     }
 }

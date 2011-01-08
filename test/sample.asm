@@ -15,14 +15,14 @@ main:
             init i, integer
             arg i
             synce integer
+            argv 32
             arg i
-            arg 32
             synce integer_set
             arg i
-            arg 42
+            argv 42
             sync min, low
             arg i
-            arg 42
+            argv 42
             sync max, high
             ret 0
 

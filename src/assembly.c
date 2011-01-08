@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "assembly.h"
 #include "bytecode.h"
 #include "util.h"
@@ -104,6 +105,10 @@ void assembler(FILE* input, FILE* output) {
             continue;
         }
 
+        if (line[0] == ASM_COMMENT) {
+            continue;
+        }
+
         char* colon = strchr(line, ':');
         char* mnemonic = NULL;
         if (colon == NULL) {
@@ -119,27 +124,40 @@ void assembler(FILE* input, FILE* output) {
             unsigned int arg = 0x0;
 
             char* arg1 = strtok(NULL, ", \t\r\n"); 
-            if (instruction == BC_SYNC && arg1 != NULL) {
-                map_node_t* symbol = map_find(&symbols, arg1);
-                if (symbol != NULL) {
-                    arg = swap_endian((*(ctr_addr*)symbol->value) - text_size / BC_OPCODE_SIZE);
-                } else {
-                    arg = 0xFFFFFFFF;
-                }
-            } else if ((instruction == BC_SYNCE || instruction == BC_ASYNCE) && arg1 != NULL) {
-                char name[CTR_SYMBOL_NAME_SIZE+1];
-                memset(name, 0, CTR_SYMBOL_SIZE+1);
-                strcpy(name, arg1);
-                int index = list_find(&external_symbols, (void*)name);
-                if (index >= 0) {
-                    arg = swap_endian(index);
-                } else {
-                    arg = 0xFFFFFFFF;
+            if (arg1 != NULL) {
+                switch (instruction) {
+                    case BC_SYNC: {
+                        map_node_t* symbol = map_find(&symbols, arg1);
+                        if (symbol != NULL) {
+                            arg = (*(ctr_addr*)symbol->value) - text_size / BC_OPCODE_SIZE;
+                        } else {
+                            arg = 0xFFFFFFFF;
+                        }
+                        break;
+                    }
+                    case BC_SYNCE:
+                    case BC_ASYNCE: { 
+                        char name[CTR_SYMBOL_NAME_SIZE+1];
+                        memset(name, 0, CTR_SYMBOL_SIZE+1);
+                        strcpy(name, arg1);
+                        int index = list_find(&external_symbols, (void*)name);
+                        if (index >= 0) {
+                             arg = index;
+                        } else {
+                            arg = 0xFFFFFFFF;
+                        }
+                        break;
+                    }
+                    case BC_ARGV: {
+                        arg = atoi(arg1);
+                        break;
+                    }
                 }
             }
 
             // write
             fwrite(&instruction, sizeof(char), 1, output);
+            arg = swap_endian(arg);
             fwrite(&arg, sizeof(int), 1, output);
             text_size += BC_OPCODE_SIZE;
         }

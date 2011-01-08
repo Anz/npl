@@ -8,7 +8,7 @@
 #include "map.h"
 #include "integer.h"
 
-void print_arch_code(void* address);
+void print_arch_code(void* address, size_t seg_size);
 
 void print_wtf() {
     printf("hello vm!\n");
@@ -48,10 +48,10 @@ int main(int argc, char* argv[]) {
     map_add(&library, "print", &faddr);
     //map_add(&library, "integer", &faddr);
     library_add_integer(&library);
-    map_add(&library, "integer_set", &faddr);
+    //map_add(&library, "integer_set", &faddr);
     arch_native_t native = arch_compile(header, module, &library);
     fclose(module);
-    print_arch_code(native.main);
+    print_arch_code(native.main, native.text_size);
 
     // create main job
     job_t main_job;
@@ -89,9 +89,9 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-void print_arch_code(void* address) {
+void print_arch_code(void* address, size_t seg_size) {
     char* text = (char*)address;
-    for (int i = 0; text[i] != 0;) {
+    for (int i = 0; i < seg_size;) {
         int size = 1;
         for (int j = 0; j < size; j++) {
             if (j == 0) {
@@ -99,6 +99,8 @@ void print_arch_code(void* address) {
                     size = 5;
                 } else if (text[i+j] == (char)0xC8) {
                     size = 4;
+                } else if (text[i+j] == (char)0x68) {
+                    size = 5;
                 } else if (text[i+j] == (char)0x83 || text[i+j] == (char)0xFF) {
                     size = 3;
                 } else if (text[i+j] == (char)0xC9) {

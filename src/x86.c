@@ -14,6 +14,7 @@
 #define X86_REGISTER 0x83
 #define X86_SUB_ESP 0xEC
 #define X86_PUSH 0xFF
+#define X86_PUSH_VALUE 0x68
 
 void* call_addr(void* source, void* target) {
     if (source > target) {
@@ -51,9 +52,8 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
     }
 
     // alloc space
-    size_t text_size = header.text_segment_size + header.symbol_segment_size / CTR_SYMBOL_SIZE * 8;
-    native.text = malloc(text_size);
-    native.main = native.text;
+    native.text_size = header.text_segment_size / BC_OPCODE_SIZE * 5 + header.symbol_segment_size / CTR_SYMBOL_SIZE * 8;
+    native.text = malloc(native.text_size);
 
     long index = 0;
 
@@ -90,6 +90,13 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
                 write1(0xFC, native.text, &index);
                 break;
             }
+            case BC_ARGV: {
+                write1(X86_PUSH_VALUE, native.text, &index);
+                write4(32, native.text, &index);
+                //write1(X86_NOP, native.text, &index);
+                break;
+                break;
+            }
             case BC_SYNCE:
             case BC_ASYNCE: {
                 if (bc.argument < 0 || bc.argument >= external_count) {
@@ -109,6 +116,10 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
         }
     }
 
+    // release unused memory
+    native.text_size = index;
+    native.text = realloc(native.text, native.text_size);
+    native.main = native.text;
 
     return native;
 }

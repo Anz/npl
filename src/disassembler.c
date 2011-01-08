@@ -171,6 +171,10 @@ void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* externa
                 }
                 break;
             }
+            case BC_ARGV: {
+                printf("%i\n", bc.argument);
+                break;
+            }
             default: {
                 printf("\n");
                 break;
