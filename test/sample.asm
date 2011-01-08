@@ -12,7 +12,9 @@ main:
             synce print
             synce print
             synce print
-            synce integer, i
+            init i, integer
+            arg i
+            synce integer
             arg i
             arg 32
             synce integer_set

@@ -1,11 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 #include "container.h"
 #include "arch.h"
 #include "job.h"
 #include "thread.h"
 #include "map.h"
-#include <pthread.h>
+#include "integer.h"
 
 void print_arch_code(void* address);
 
@@ -45,7 +46,8 @@ int main(int argc, char* argv[]) {
     int faddr = (int)&print_wtf;
     map_init(&library, sizeof(int));
     map_add(&library, "print", &faddr);
-    map_add(&library, "integer", &faddr);
+    //map_add(&library, "integer", &faddr);
+    library_add_integer(&library);
     map_add(&library, "integer_set", &faddr);
     arch_native_t native = arch_compile(header, module, &library);
     fclose(module);
@@ -92,12 +94,16 @@ void print_arch_code(void* address) {
     for (int i = 0; text[i] != 0;) {
         int size = 1;
         for (int j = 0; j < size; j++) {
-            if (text[i+j] == (char)0xE8 || text[i+j] == (char)0xff) {
-                size = 5;
-            } else if (text[i+j] == (char)0xC8) {
-                size = 4;
-            } else if (text[i+j] == (char)0xC9) {
-                size = 2;
+            if (j == 0) {
+                if (text[i+j] == (char)0xE8) {
+                    size = 5;
+                } else if (text[i+j] == (char)0xC8) {
+                    size = 4;
+                } else if (text[i+j] == (char)0x83 || text[i+j] == (char)0xFF) {
+                    size = 3;
+                } else if (text[i+j] == (char)0xC9) {
+                    size = 2;
+                }
             }
             unsigned int value = text[i+j];
             value = (value << 24) >> 24;

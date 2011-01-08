@@ -20,6 +20,7 @@
 #define BC_ENTER  0x0D
 #define BC_SYNCE  0x0E
 #define BC_ASYNCE 0x0F
+#define BC_INIT   0x10
 
 #define BC_ASM_NOP    "nop"
 #define BC_ASM_ARG    "arg"
@@ -37,6 +38,7 @@
 #define BC_ASM_ENTER  "enter"
 #define BC_ASM_SYNCE  "synce"
 #define BC_ASM_ASYNCE "asynce"
+#define BC_ASM_INIT   "init"
 
 char bc_asm2op(char* assembly);
 char* bc_op2asm(char opcode);

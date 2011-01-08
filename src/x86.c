@@ -6,11 +6,14 @@
 #include "bytecode.h"
 
 // x86 opcdoes
-#define X86_ENTER swap_endian(0xC8040000)
+#define X86_ENTER 0xC8
 #define X86_CALL 0xE8
 #define X86_NOP 0x90
 #define X86_LEAVE 0xC9
 #define X86_RET 0xC3
+#define X86_REGISTER 0x83
+#define X86_SUB_ESP 0xEC
+#define X86_PUSH 0xFF
 
 void* call_addr(void* source, void* target) {
     if (source > target) {
@@ -60,7 +63,10 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
         ctr_bytecode_t bc = ctr_text_read(input, header, i);
         switch(bc.instruction) {
             case BC_ENTER: {
-                write4(X86_ENTER, native.text, &index);
+                write1(X86_ENTER, native.text, &index);
+                write1(0, native.text, &index);
+                write1(0, native.text, &index);
+                write1(0, native.text, &index);
                 break;
             }
             case BC_RET: {
@@ -70,6 +76,18 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
             }
             case BC_NOP: {
                 write1(X86_NOP, native.text, &index);
+                break;
+            }
+            case BC_INIT: {
+                write1(X86_REGISTER, native.text, &index);
+                write1(X86_SUB_ESP, native.text, &index);
+                write1(4, native.text, &index);
+                break;
+            }
+            case BC_ARG: {
+                write1(X86_PUSH, native.text, &index);
+                write1(0x75, native.text, &index);
+                write1(0xFC, native.text, &index);
                 break;
             }
             case BC_SYNCE:
