@@ -93,6 +93,10 @@ void assembler(FILE* input, FILE* output) {
     // jump to text segment
     jump_to_text_seg(input);
 
+    // variables
+    map_t variables;
+    map_init(&variables, sizeof(int));
+
     size_t text_size = 0;
     char line[READ_BUFFER_SIZE];
     int running = 1;
@@ -145,6 +149,25 @@ void assembler(FILE* input, FILE* output) {
                              arg = index;
                         } else {
                             arg = 0xFFFFFFFF;
+                        }
+                        break;
+                    }
+                    case BC_ENTER: {
+                        int variable_index = 0;
+                        while(arg1 != NULL) {
+                            arg += 4;
+                            map_add(&variables, arg1, &variable_index);
+                            arg1 = strtok(NULL, ", \t\r\n");
+                            variable_index++;
+                        }
+                        break;
+                    }
+                    case BC_ARG: {
+                        map_node_t* variable = map_find(&variables, arg1);
+                        if (variable != NULL) {
+                            arg = *(int*)variable->value;
+                        } else {
+                            fprintf(stderr, "error could not find variable: %s\n", arg1);
                         }
                         break;
                     }

@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
     // init
     job_list_t jobs;
     job_list_init(&jobs);
-    for (int i = 0; i < 1; i++) {
+    /*for (int i = 0; i < 1; i++) {
         job_list_push(&jobs, main_job);
      }
 
@@ -75,7 +75,8 @@ int main(int argc, char* argv[]) {
     // wait for threads
     for (int i = 0; i < thread_count; i++) {
         thread_join(&threads[i]);
-    }
+    }*/
+    native.main();
     
 
     // releasep

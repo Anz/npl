@@ -13,6 +13,7 @@
 #define X86_RET 0xC3
 #define X86_REGISTER 0x83
 #define X86_SUB_ESP 0xEC
+#define X86_ADD_ESP 0xC4
 #define X86_PUSH 0xFF
 #define X86_PUSH_VALUE 0x68
 
@@ -56,6 +57,7 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
     native.text = malloc(native.text_size);
 
     long index = 0;
+    int argument_count = 0;
 
     // compile to x86 code
     unsigned int count = ctr_text_count(header);
@@ -64,7 +66,7 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
         switch(bc.instruction) {
             case BC_ENTER: {
                 write1(X86_ENTER, native.text, &index);
-                write1(0, native.text, &index);
+                write1(bc.argument, native.text, &index);
                 write1(0, native.text, &index);
                 write1(0, native.text, &index);
                 break;
@@ -78,23 +80,26 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
                 write1(X86_NOP, native.text, &index);
                 break;
             }
-            case BC_INIT: {
+            /*case BC_INIT: {
                 write1(X86_REGISTER, native.text, &index);
                 write1(X86_SUB_ESP, native.text, &index);
                 write1(4, native.text, &index);
                 break;
-            }
+            }*/
             case BC_ARG: {
-                write1(X86_PUSH, native.text, &index);
-                write1(0x75, native.text, &index);
-                write1(0xFC, native.text, &index);
+                write1(0x55, native.text, &index); // push ebx
+                write1(0x83, native.text, &index); // sub (argument+1)*4, (%esp)
+                write1(0x2C, native.text, &index);
+                write1(0x24, native.text, &index);
+                char size = (char)((bc.argument + 1) * 4);
+                write1(size, native.text, &index);
+                argument_count++;
                 break;
             }
             case BC_ARGV: {
                 write1(X86_PUSH_VALUE, native.text, &index);
-                write4(32, native.text, &index);
-                //write1(X86_NOP, native.text, &index);
-                break;
+                write4(bc.argument, native.text, &index);
+                argument_count++;
                 break;
             }
             case BC_SYNCE:
@@ -107,6 +112,14 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
                 write1(X86_CALL, native.text, &index);
                 void* addr = call_addr(native.text + index + 3, function);
                 write4((unsigned int)addr, native.text, &index);
+
+                // reset stack pointer
+                if (argument_count > 0) {
+                    write1(X86_REGISTER, native.text, &index);
+                    write1(X86_ADD_ESP, native.text, &index);
+                    write1(4 * argument_count, native.text, &index);
+                    argument_count = 0;
+                }
                 break;
            }
            default: {

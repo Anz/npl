@@ -8,23 +8,22 @@
 
 .text
 main:
-            enter args
+            enter var1, var2
             synce print
             synce print
             synce print
-            init i, integer
-            arg i
-            synce integer
             argv 32
-            arg i
-            synce integer_set
-            arg i
-            argv 42
-            sync min, low
-            arg i
-            argv 42
-            sync max, high
-            ret 0
+            arg var1
+            synce integer
+            argv 10
+            arg var2
+            synce integer
+            arg var2
+            arg var1
+            synce integer_mul
+            sync min
+            sync max
+            ret
 
 min:
             enter a, b

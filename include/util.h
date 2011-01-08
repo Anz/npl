@@ -10,5 +10,6 @@ unsigned int line_index(unsigned int line, size_t line_size, size_t offset);
 char* resize_memory(char* buffer, size_t size);
 unsigned int char2int(char value);
 char int2char(int value, unsigned int index);
+char number2str(int value);
 
 #endif // UTIL_H

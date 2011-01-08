@@ -43,3 +43,7 @@ char int2char(int value, unsigned int index) {
     char* ptr = (char*)&value;
     return ptr[index];
 }
+
+char number2str(int value) {
+    return 'a' + value;
+}

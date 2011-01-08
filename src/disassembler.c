@@ -171,6 +171,17 @@ void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* externa
                 }
                 break;
             }
+            case BC_ENTER: {
+                for (int i = 0; i < bc.argument / 4; i++) {
+                    printf("%c, ", number2str(i));
+                }
+                printf("\n");
+                break;
+            }
+            case BC_ARG: {
+                printf("%c\n", number2str(bc.argument));
+                break;
+            }
             case BC_ARGV: {
                 printf("%i\n", bc.argument);
                 break;
