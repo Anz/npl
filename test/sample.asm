@@ -18,6 +18,7 @@ main:
             argv 10
             arg var2
             synce integer
+            arg var1
             arg var2
             arg var1
             synce integer_mul

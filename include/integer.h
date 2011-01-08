@@ -7,9 +7,9 @@
 
 void library_add_integer(map_t* map);
 void integer(int* i, int value);
-void integer_add(int* i, int* value);
-void integer_sub(int* i, int* value);
-void integer_mul(int* i, int* value);
-void integer_div(int* i, int* value);
+void integer_add(int* result, int* a, int* b);
+void integer_sub(int* result, int* a, int* b);
+void integer_mul(int* result, int* a, int* b);
+void integer_div(int* result, int* a, int* b);
 
 #endif
