@@ -1,0 +1,49 @@
+DESCRIPTION
+
+    NPL is an revolutionary programming language architecture design. 
+    
+    Software written in NPL will be automatically splitet at run time into
+    multiple threads by it's virtual machine. Synchronization between threads 
+    are highly optimized and reduced to a minium by design, which is strongly 
+    required for Grid Computing and Supercomputers.
+
+    By design, virtual machines for NPL do not need a Garbage Collector and 
+    memory also do not needed to be deleted manualy. At load/compile time it is
+    already known when to deleted memory, which allows a new way of memory 
+    handling.
+
+    The project provides severals components:
+
+    virtual machine (in development)
+    assembler (in development)
+    disassembler (in development)
+    linker (not started yet)
+    compiler (not started yet)
+    decompiler (not started yet)
+    optimizer (not started yet)
+    build system (not started yet)
+    debugger (not started yet)
+
+
+PLATFORM
+
+    To build the source code C compiler (C99 compatible) and Make is required.
+
+    The virtual machine will only work under x86 (IA-32) compatible processor.
+    Other platforms will follow. NX-Bit, PaX, Exec Shield and/or other such 
+    security features must be disabled.
+
+    All software is tested under GNU/Linux Systems.
+
+
+BUILD
+
+    For building the software execute the following commands in a shell
+
+    $git clone http://github.com/Anz/npl.git npl
+    $make
+
+
+LICENSE
+
+    All files are available under the terms of the Apache License 2.0
