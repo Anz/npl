@@ -4,11 +4,11 @@ DESCRIPTION
     
     Software written in NPL will be automatically splitet at run time into
     multiple threads by it's virtual machine. Synchronization between threads 
-    are highly optimized and reduced to a minium by design, which is strongly 
-    required for Grid Computing and Supercomputers.
+    are highly optimized and reduced to a minium, which is strongly required for
+    Grid Computing and Supercomputers.
 
     By design, virtual machines for NPL do not need a Garbage Collector and 
-    memory also do not needed to be deleted manualy. At load/compile time it is
+    memory also do not needed to be delete manualy. At load/compile time it is
     already known when to deleted memory, which allows a new way of memory 
     handling.
 
@@ -21,6 +21,7 @@ DESCRIPTION
     compiler (not started yet)
     decompiler (not started yet)
     optimizer (not started yet)
+    profiler (not started yet)
     build system (not started yet)
     debugger (not started yet)
 
