@@ -20,9 +20,29 @@ int main(int argc, char* argv[]) {
         print_usage();
         return 0;
     }
+    
+    int count = 1;
+    int setheader = 0, setsymbol = 0, settext = 0;
+    for(count; count < argc; count++){
+        if(strcmp(argv[count], "-i") == 0){
+            setheader = 1;
+        };
+        if(strcmp(argv[count], "-s") == 0){
+            setsymbol = 1;
+        }
+        if(strcmp(argv[count], "-t") == 0){
+            settext = 1;
+        }
+    }
+    
+	//temp
+	printf("setheader = %i\n", setheader);
+	printf("setsymbol = %i\n", setsymbol);
+	printf("settext = %i\n", settext);
+	
 
     // load file
-    char* path = argv[1];
+    char* path = argv[--count];
     FILE* file = fopen(path, "rb");
 
     // on error, print error
@@ -35,7 +55,9 @@ int main(int argc, char* argv[]) {
     ctr_header_t header = ctr_read_header(file);
 
     // print header
-    print_header(header);
+    if(setheader == 1){
+        print_header(header);
+    };
 
     // check magic number
     if (header.magic_number != CTR_MAGIC_NUMBER) {
@@ -46,14 +68,20 @@ int main(int argc, char* argv[]) {
 
     // print symbols
     map_t symbols = collect_symbols(file, header);
-    print_symbols(file, header);
+    if(setsymbol == 1){
+        print_symbols(file, header);
+    };
  
     // print external symbols
     list_t external_symbols = collect_external_symbols(file, header);
-    print_external_symbol_segment(external_symbols, header);
+    if(setsymbol == 1){
+        print_external_symbol_segment(external_symbols, header);
+    }
 
     // print text
-    print_text(file, header, &symbols, &external_symbols);
+    if(settext == 1){
+        print_text(file, header, &symbols, &external_symbols);
+    }
 
     // release
     list_release(&external_symbols);
@@ -64,7 +92,10 @@ int main(int argc, char* argv[]) {
 }
 
 void print_usage() {
-    printf("usage: nis [options] <input>\n");
+    printf("usage: nis [options] <input>\n"
+		"\t-i\tshow header\n"
+		"\t-s\tshow symbol\n"
+		"\t-t\tshow text\n");
 }
 
 map_t collect_symbols(FILE* file, ctr_header_t header) {
