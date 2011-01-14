@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <container.h>
 #include <bytecode.h>
+#include <stdbool.h>
 #include "util.h"
 #include "map.h"
 #include "list.h"
@@ -21,19 +22,23 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     
-    int count = 1;
-    int setheader = 0, setsymbol = 0, settext = 0;
-    for(count; count < argc; count++){
+    // parse arguments
+    bool setheader = false, setsymbol = false, settext = false, sethelp = false;
+    for(int count = 1; count < argc; count++){
         if(strcmp(argv[count], "-i") == 0){
-            setheader = 1;
+            setheader = true;
         };
         if(strcmp(argv[count], "-s") == 0){
-            setsymbol = 1;
-        }
+            setsymbol = true;
+        };
         if(strcmp(argv[count], "-t") == 0){
-            settext = 1;
-        }
-    }
+            settext = true;
+        };
+        if(strcmp(argv[count], "-h") == 0){
+            print_usage();
+            return 0;
+        };
+    };
     
 	//temp
 	printf("setheader = %i\n", setheader);
@@ -42,7 +47,7 @@ int main(int argc, char* argv[]) {
 	
 
     // load file
-    char* path = argv[--count];
+    char* path = argv[--argc];
     FILE* file = fopen(path, "rb");
 
     // on error, print error
@@ -55,7 +60,7 @@ int main(int argc, char* argv[]) {
     ctr_header_t header = ctr_read_header(file);
 
     // print header
-    if(setheader == 1){
+    if(setheader == true){
         print_header(header);
     };
 
@@ -68,18 +73,18 @@ int main(int argc, char* argv[]) {
 
     // print symbols
     map_t symbols = collect_symbols(file, header);
-    if(setsymbol == 1){
+    if(setsymbol == true){
         print_symbols(file, header);
     };
  
     // print external symbols
     list_t external_symbols = collect_external_symbols(file, header);
-    if(setsymbol == 1){
+    if(setsymbol == true){
         print_external_symbol_segment(external_symbols, header);
     }
 
     // print text
-    if(settext == 1){
+    if(settext == true){
         print_text(file, header, &symbols, &external_symbols);
     }
 
