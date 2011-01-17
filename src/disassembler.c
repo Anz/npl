@@ -3,6 +3,7 @@
 #include <container.h>
 #include <bytecode.h>
 #include <stdbool.h>
+#include <string.h>
 #include "util.h"
 #include "map.h"
 #include "list.h"
@@ -23,31 +24,33 @@ int main(int argc, char* argv[]) {
     }
     
     // parse arguments
-    bool setheader = false, setsymbol = false, settext = false, sethelp = false;
-    for(int count = 1; count < argc; count++){
+    bool setheader = false, setsymbol = false, settext = false;
+    for(int count = 1; count <= (argc-1); count++){
         if(strcmp(argv[count], "-i") == 0){
             setheader = true;
-        };
+        }
         if(strcmp(argv[count], "-s") == 0){
             setsymbol = true;
-        };
+        }
         if(strcmp(argv[count], "-t") == 0){
             settext = true;
-        };
+        }
         if(strcmp(argv[count], "-h") == 0){
             print_usage();
             return 0;
-        };
-    };
+        }
+    }
     
-	//temp
+	/* temp
 	printf("setheader = %i\n", setheader);
 	printf("setsymbol = %i\n", setsymbol);
 	printf("settext = %i\n", settext);
+	printf("argc = %i\n", argc);
+	printf("path = %s\n", argv[argc]); */
 	
-
+    argc--;
     // load file
-    char* path = argv[--argc];
+    char* path = argv[argc];
     FILE* file = fopen(path, "rb");
 
     // on error, print error
@@ -60,9 +63,9 @@ int main(int argc, char* argv[]) {
     ctr_header_t header = ctr_read_header(file);
 
     // print header
-    if(setheader == true){
+    if(setheader){
         print_header(header);
-    };
+    }
 
     // check magic number
     if (header.magic_number != CTR_MAGIC_NUMBER) {
@@ -73,18 +76,19 @@ int main(int argc, char* argv[]) {
 
     // print symbols
     map_t symbols = collect_symbols(file, header);
-    if(setsymbol == true){
+    if(setsymbol){
         print_symbols(file, header);
-    };
- 
+    }
+    
+    //in the following paragraph is a stack smashing bug, but i can't find it :(
     // print external symbols
     list_t external_symbols = collect_external_symbols(file, header);
-    if(setsymbol == true){
+    if(setsymbol){
         print_external_symbol_segment(external_symbols, header);
     }
 
     // print text
-    if(settext == true){
+    if(settext){
         print_text(file, header, &symbols, &external_symbols);
     }
 
@@ -122,7 +126,7 @@ list_t collect_external_symbols(FILE* file, ctr_header_t header) {
     for (unsigned int i = 0; i < count; i++) {
         ctr_external_symbol_t symbol = ctr_external_read(file, header, i);
         list_add(&symbols, symbol.name);
-    };
+    }
     return symbols;
 }
 
