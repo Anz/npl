@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     
     // parse arguments
     bool setheader = false, setsymbol = false, settext = false;
-    for(int count = 1; count <= (argc-1); count++){
+    for(int count = 1; count < argc-1; count++){
         if(strcmp(argv[count], "-i") == 0){
             setheader = true;
         }
@@ -41,16 +41,8 @@ int main(int argc, char* argv[]) {
         }
     }
     
-	/* temp
-	printf("setheader = %i\n", setheader);
-	printf("setsymbol = %i\n", setsymbol);
-	printf("settext = %i\n", settext);
-	printf("argc = %i\n", argc);
-	printf("path = %s\n", argv[argc]); */
-	
-    argc--;
     // load file
-    char* path = argv[argc];
+    char* path = argv[argc-1];
     FILE* file = fopen(path, "rb");
 
     // on error, print error
