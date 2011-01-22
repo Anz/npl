@@ -9,12 +9,10 @@
 #include "list.h"
 
 void print_usage();
-list_t collect_external_symbols(FILE* file, ctr_header_t header);
-map_t collect_symbols(FILE* file, ctr_header_t header);
 void print_header(ctr_header_t header);
-void print_symbols(FILE* file, ctr_header_t header);
-void print_external_symbol_segment(list_t external_symbol, ctr_header_t header);
-void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* external_symbols);
+void print_symbols(ctr_t* container);
+void print_externals(ctr_t* container);
+void print_text(ctr_t* container);
 
 int main(int argc, char* argv[]) {
 
@@ -46,49 +44,46 @@ int main(int argc, char* argv[]) {
     FILE* file = fopen(path, "rb");
 
     // on error, print error
-    if (file == NULL) {
+    if (!file) {
         printf("could not open file: %s\n", path);
         return 1;
     }
 
-    // load ctr
-    ctr_header_t header = ctr_read_header(file);
+    // load container
+    ctr_t container = ctr_read(file);
+    fclose(file);
 
     // print header
     if(setheader){
-        print_header(header);
+        print_header(container.header);
     }
 
     // check magic number
-    if (header.magic_number != CTR_MAGIC_NUMBER) {
+    if (container.header.magic_number != CTR_MAGIC_NUMBER) {
         fprintf(stderr, "magic number is not equal to 0x%X - abort\n", CTR_MAGIC_NUMBER);
         return 1;
     }
     printf("\n");
 
     // print symbols
-    map_t symbols = collect_symbols(file, header);
     if(setsymbol){
-        print_symbols(file, header);
+        print_symbols(&container);
     }
     
     //in the following paragraph is a stack smashing bug, but i can't find it :(
     // print external symbols
-    list_t external_symbols = collect_external_symbols(file, header);
     if(setsymbol){
-        print_external_symbol_segment(external_symbols, header);
+        print_externals(&container);
     }
 
     // print text
     if(settext){
-        print_text(file, header, &symbols, &external_symbols);
+        print_text(&container);
     }
 
     // release
-    list_release(&external_symbols);
-    map_release(&symbols);
+    ctr_release(&container);
 
-    fclose(file);
     return 0;
 }
 
@@ -99,70 +94,48 @@ void print_usage() {
 		"\t-t\tshow text\n");
 }
 
-map_t collect_symbols(FILE* file, ctr_header_t header) {
-    map_t symbols;
-    map_init(&symbols, CTR_SYMBOL_NAME_SIZE, sizeof(ctr_addr));
-    unsigned int symbol_count = ctr_symbol_count(header);
-    for(unsigned int index = 0; index < symbol_count; index++) {
-        ctr_symbol_t symbol = ctr_symbol_read(file, index);
-        map_set(&symbols, symbol.name, &symbol.addr);
-    }
-    return symbols;
-}
-
-list_t collect_external_symbols(FILE* file, ctr_header_t header) {
-    list_t symbols;
-    list_init(&symbols, sizeof(ctr_external_symbol_t));
-
-    unsigned int count = ctr_external_count(header);
-    for (unsigned int i = 0; i < count; i++) {
-        ctr_external_symbol_t symbol = ctr_external_read(file, header, i);
-        list_add(&symbols, symbol.name);
-    }
-    return symbols;
-}
-
 void print_header(ctr_header_t header) {
     printf("header segment:\n\n");
     printf("%08X:\tmagic number 0x%X\n", 0, header.magic_number);
     printf("%08X:\tcontainer v%u\n", 4,  header.container_version);
     printf("%08X:\tcontent   v%u\n", 8, header.content_version);
-    printf("%08X:\tsymbol    %4.2f KB (%u Bytes)\n", 12, header.symbol_segment_size / 1024.0, header.symbol_segment_size);
-    printf("%08X:\texternal  %4.2f KB (%u Bytes)\n", 16, header.external_symbol_segment_size / 1024.0, header.external_symbol_segment_size);
-    printf("%08X:\ttext      %4.2f KB (%u Bytes)\n", 20, header.text_segment_size / 1024.0, header.text_segment_size);
+    printf("%08X:\tsymbol    %4.2f KB (%u Bytes)\n", 12, header.symbol_size / 1024.0, header.symbol_size);
+    printf("%08X:\texternal  %4.2f KB (%u Bytes)\n", 16, header.external_size / 1024.0, header.external_size);
+    printf("%08X:\ttext      %4.2f KB (%u Bytes)\n", 20, header.text_size / 1024.0, header.text_size);
 }
 
-void print_symbols(FILE* file, ctr_header_t header) {
+void print_symbols(ctr_t* container) {
     printf("symbol segment:\n\n");
     printf("%10s\taddr     \tname\n\n", "");
-    unsigned int symbol_count = ctr_symbol_count(header);
-    for(unsigned int index = 0; index < symbol_count; index++) {
-        ctr_symbol_t symbol = ctr_symbol_read(file, index);
-        printf("%08X:\t%08X \t%s\n", CTR_HEADER_SIZE + index * CTR_SYMBOL_SIZE, symbol.addr, symbol.name);
+    list_t* symbols = &container->symbols.list;
+    for(unsigned int index = 0; index < symbols->count; index++) {
+        map_entry_t* symbol = list_get(symbols, index);
+        printf("%08X:\t%08X \t%s\n", CTR_HEADER_SIZE + index * CTR_SYMBOL_SIZE, *(ctr_addr*)symbol->value, (char*)symbol->key);
     }
     printf("\n");
 }
 
-void print_external_symbol_segment(list_t externals, ctr_header_t header) {
-    size_t offset = ctr_external_offset(header);
-
+void print_externals(ctr_t* container) {
     printf("external symbol segment:\n\n");
     printf("%10s\tname\n\n", "");
-
-    for (unsigned int i = 0; i < externals.count; i++) {
-        char* name = list_get(&externals, i);
-        printf("%08X:\t%s\n", offset + i * CTR_SYMBOL_NAME_SIZE, name);
+    list_t* externals = &container->externals.list;
+    size_t offset = CTR_HEADER_SIZE + container->header.symbol_size;
+    for (unsigned int i = 0; i < externals->count; i++) {
+        map_entry_t* external = list_get(externals, i);
+        printf("%08X:\t%s\n", offset + i * CTR_SYMBOL_NAME_SIZE, (char*)external->key);
     }
     printf("\n");
 }
 
-void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* external_symbols) {
+void print_text(ctr_t* container) {
     printf("text segment:\n\n");
     printf("%11s\taddr      \tbinary        \tname\targument\n\n", "");
-    unsigned int text_count = ctr_text_count(header);
-    int offset = ctr_text_offset(header);
-    for(unsigned int i = 0; i < text_count; i++) {
-        ctr_bytecode_t bc = ctr_text_read(file, header, i);
+    size_t offset = CTR_HEADER_SIZE + container->header.symbol_size + container->header.external_size;
+    list_t* texts = &container->texts;
+    map_t* symbols = &container->symbols;
+    map_t* externals = &container->externals;
+    for(unsigned int i = 0; i < texts->count; i++) {
+        ctr_bytecode_t* bc = list_get(texts, i);
 
         char* symbol = (char*)map_find_value(symbols, &i);
         if (symbol) {
@@ -171,48 +144,49 @@ void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* externa
 
         printf(" %08X:\t", offset + i * BC_OPCODE_SIZE);
         printf("%08X\t", i);
-        printf("%02X ", char2int(bc.instruction));
-        printf("%02X ", char2int(int2char(bc.argument, 0)));
-        printf("%02X ", char2int(int2char(bc.argument, 1)));
-        printf("%02X ", char2int(int2char(bc.argument, 2)));
-        printf("%02X\t", char2int(int2char(bc.argument, 3)));
-        printf("%s\t", bc_op2asm(bc.instruction));
+        printf("%02X ", char2int(bc->instruction));
+        printf("%02X ", char2int(int2char(bc->argument, 0)));
+        printf("%02X ", char2int(int2char(bc->argument, 1)));
+        printf("%02X ", char2int(int2char(bc->argument, 2)));
+        printf("%02X\t", char2int(int2char(bc->argument, 3)));
+        printf("%s\t", bc_op2asm(bc->instruction));
 
-        switch (bc.instruction) {
+        switch (bc->instruction) {
             case BC_SYNC:
             case BC_ASYNC: {
-                ctr_addr addr = i + bc.argument;
+                ctr_addr addr = i + bc->argument;
                 char* symbol = (char*)map_find_value(symbols, &addr);
                 if (symbol) {
                     printf("%s\n", symbol);
                 } else {
-                    printf("0x%08X\n", bc.argument);
+                    printf("0x%08X\n", bc->argument);
                 }
                 break;
             }
             case BC_SYNCE:
             case BC_ASYNCE: {
-                char* symbol = list_get(external_symbols, bc.argument);
-                if (symbol != NULL) {
+                int addr = bc->argument;
+                char* symbol = (char*)map_find_value(externals, &addr);
+                if (symbol) {
                     printf("%s\n", symbol);
                 } else {
-                    printf("0x%08X\n", bc.argument);
+                    printf("0x%08X\n", bc->argument);
                 }
                 break;
             }
             case BC_ENTER: {
-                for (int i = 0; i < bc.argument / 4; i++) {
+                for (int i = 0; i < bc->argument / 4; i++) {
                     printf("%c, ", number2str(i));
                 }
                 printf("\n");
                 break;
             }
             case BC_ARG: {
-                printf("%c\n", number2str(bc.argument));
+                printf("%c\n", number2str(bc->argument));
                 break;
             }
             case BC_ARGV: {
-                printf("%i\n", bc.argument);
+                printf("%i\n", bc->argument);
                 break;
             }
             default: {

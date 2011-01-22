@@ -3,10 +3,9 @@
 #include "util.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 // read header
-ctr_header_t ctr_read_header(FILE* file) {
+ctr_header_t read_header(FILE* file) {
     ctr_header_t header;
 
     // segment
@@ -18,84 +17,91 @@ ctr_header_t ctr_read_header(FILE* file) {
     header.magic_number = swap_endian(segment[0]);
     header.container_version = swap_endian(segment[1]); 
     header.content_version = swap_endian(segment[2]);
-    header.symbol_segment_size = swap_endian(segment[3]);
-    header.external_symbol_segment_size = swap_endian(segment[4]);
-    header.text_segment_size = swap_endian(segment[5]);
+    header.symbol_size = swap_endian(segment[3]);
+    header.external_size = swap_endian(segment[4]);
+    header.text_size = swap_endian(segment[5]);
 
    return header;
 }
-// symbol segment functions
-ctr_symbol_t ctr_symbol_read(FILE* file, unsigned int index) {
-    unsigned int offset = ctr_symbol_offset() + index * CTR_SYMBOL_SIZE;
 
-    // set cursor
-    fseek(file, offset, SEEK_SET);
+// read symbol segment
+void read_symbols(FILE* file, size_t size, map_t* symbols) {
+    for (int i = 0; i < size / CTR_SYMBOL_SIZE; i++) {
+        // read
+        char buffer[CTR_SYMBOL_SIZE];
+        fread(buffer, CTR_SYMBOL_SIZE, 1, file);
 
-    // read
-    char buffer[CTR_SYMBOL_SIZE];
-    fread(buffer, CTR_SYMBOL_SIZE, 1, file);
+        // fill data
+        ctr_addr addr = swap_endian(*(int*)buffer);
+        char name[CTR_SYMBOL_NAME_SIZE+1];
+        memcpy(name, &buffer[4], CTR_SYMBOL_NAME_SIZE);
+        name[CTR_SYMBOL_NAME_SIZE] = '\0';
 
-    // fill data
-    ctr_symbol_t symbol;
-    symbol.addr = swap_endian(*(int*)buffer);
-    memcpy(symbol.name, &buffer[4], CTR_SYMBOL_NAME_SIZE);
-    symbol.name[CTR_SYMBOL_NAME_SIZE] = '\0';
-
-    return symbol;
+        map_set(symbols, name, &addr);
+    }
 }
 
-unsigned int ctr_symbol_count(ctr_header_t header) {
-    return header.symbol_segment_size / CTR_SYMBOL_SIZE;
+// read external segment
+void read_externals(FILE* file, size_t size, map_t* externals) {
+    for (int i = 0; i < size / CTR_SYMBOL_NAME_SIZE; i++) {
+        // read
+        char name[CTR_SYMBOL_NAME_SIZE+1];
+        fread(name, CTR_SYMBOL_NAME_SIZE, 1, file);
+        name[CTR_SYMBOL_NAME_SIZE+1] = '\0';
+        int index = i;
+        map_set(externals, name, &index);
+    }
 }
 
-unsigned int ctr_symbol_offset() {
-    return CTR_HEADER_SIZE;
+// read text segment
+void read_texts(FILE* file, size_t size, list_t* texts) {
+    for (int i = 0; i < size / BC_OPCODE_SIZE; i++) {
+        // read
+        char buffer[BC_OPCODE_SIZE];
+        fread(buffer, BC_OPCODE_SIZE, 1, file);
+
+        // fill data
+        ctr_bytecode_t bc;
+        bc.instruction = buffer[0];
+        bc.argument = swap_endian(*(int*)&buffer[1]);
+        
+        list_add(texts, &bc);
+   }
 }
 
-// external symbol segment functions
-ctr_external_symbol_t ctr_external_read(FILE* file, ctr_header_t header, unsigned int index) {
-    unsigned int offset = ctr_external_offset(header) + index * CTR_SYMBOL_NAME_SIZE;
-
-    // set cursor
-    fseek(file, offset, SEEK_SET);
-
-    // read
-    ctr_external_symbol_t symbol;
-    fread(symbol.name, CTR_SYMBOL_SIZE, 1, file);
-    symbol.name[CTR_SYMBOL_NAME_SIZE] = '\0';
-    return symbol;
+// init container
+void ctr_init(ctr_t* container) {
+    map_init(&container->symbols, MAP_STR, sizeof(ctr_addr));
+    map_init(&container->externals, MAP_STR, sizeof(int));
+    list_init(&container->texts, sizeof(ctr_bytecode_t));
 }
 
-unsigned int ctr_external_count(ctr_header_t header) {
-    return header.external_symbol_segment_size / CTR_SYMBOL_NAME_SIZE;
+// read file
+ctr_t ctr_read(FILE* file) {
+    ctr_t c;
+    ctr_init(&c);
+
+    c.header = read_header(file);
+
+    // check magic number
+    if (c.header.magic_number != CTR_MAGIC_NUMBER) {
+        return c;
+    }
+
+    read_symbols(file, c.header.symbol_size, &c.symbols);
+    read_externals(file, c.header.external_size, &c.externals);
+    read_texts(file, c.header.text_size, &c.texts);
+    return c;
 }
 
-unsigned int ctr_external_offset(ctr_header_t header) {
-    return CTR_HEADER_SIZE + header.symbol_segment_size;
+// write file
+void ctr_write(FILE* file, ctr_t* container) {
 }
 
-ctr_bytecode_t ctr_text_read(FILE* file, ctr_header_t header, unsigned int index) {
-    unsigned int offset = ctr_text_offset(header) + index * BC_OPCODE_SIZE;
-
-    // set cursor
-    fseek(file, offset, SEEK_SET);
-
-    // read
-    char buffer[BC_OPCODE_SIZE];
-    fread(buffer, BC_OPCODE_SIZE, 1, file);
-
-    // fill data
-    ctr_bytecode_t bc;
-    bc.instruction = buffer[0];
-    bc.argument = swap_endian(*(int*)&buffer[1]);
-
-    return bc;
+// release container
+void ctr_release(ctr_t* container) {
+    map_release(&container->symbols);
+    map_release(&container->externals);
+    list_release(&container->texts);
 }
 
-unsigned int ctr_text_count(ctr_header_t header) {
-    return header.text_segment_size / BC_OPCODE_SIZE;
-}
-
-unsigned int ctr_text_offset(ctr_header_t header) {
-    return CTR_HEADER_SIZE + header.symbol_segment_size + header.external_symbol_segment_size;
-}

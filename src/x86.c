@@ -38,7 +38,7 @@ void write4(unsigned int data, char* buffer, long* index) {
 arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
     arch_native_t native;
 
-    // get external symbol table
+/*    // get external symbol table
     unsigned int external_count = ctr_external_count(header);
     void* externals[external_count];
     for (unsigned int i = 0; i < external_count; i++) {
@@ -86,7 +86,7 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
                 write1(4, native.text, &index);
                 break;
             }*/
-            case BC_ARG: {
+            /*case BC_ARG: {
                 write1(0x55, native.text, &index); // push ebx
                 write1(0x83, native.text, &index); // sub (argument+1)*4, (%esp)
                 write1(0x2C, native.text, &index);
@@ -133,6 +133,6 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
     native.text_size = index;
     native.text = realloc(native.text, native.text_size);
     native.main = native.text;
-
+*/
     return native;
 }

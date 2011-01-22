@@ -18,9 +18,12 @@ void jump_to_text_seg(FILE* file) {
     }
 }
 
-size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, map_t* externals) {
+size_t write_symbol_segment(FILE* input, FILE* output, ctr_t* container) {
     // jump to text seg
     jump_to_text_seg(input);
+
+    map_t* symbols = &container->symbols;
+    map_t* externals = &container->externals;
 
     size_t size = 0;
     ctr_addr addr = 0;
@@ -40,13 +43,10 @@ size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, map_t* ex
 
         if (colon != NULL) {
             ctr_addr symbol_addr = swap_endian(addr);
-            char* token = strtok(line, ": ");
+            char* name = strtok(line, ": ");
 
             // add symbol to map
-            char name[CTR_SYMBOL_NAME_SIZE];
-            memset(name, 0, CTR_SYMBOL_SIZE);
-            strcpy(name, token);
-            map_set(symbols, &addr, name);
+            map_set(symbols, name, &addr);
 
             // write to file
             fwrite(&symbol_addr, sizeof(char), CTR_ADDR_SIZE, output);
@@ -59,10 +59,10 @@ size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, map_t* ex
             char code = bc_asm2op(instruction);
             if (code == BC_SYNCE || code == BC_ASYNCE) {
                 char* arg = strtok(NULL, " ,\t\r\n");
-                char name[CTR_SYMBOL_NAME_SIZE];
-                memset(name, 0, CTR_SYMBOL_NAME_SIZE);
-                strcpy(name, arg);
-                map_set(externals, &external_index, name);
+                if (!map_find_key(externals, arg)) {
+                    map_set(externals, arg, &external_index);
+                    external_index++;
+                }
             }
             addr++;
         }
@@ -77,17 +77,17 @@ void assembler(FILE* input, FILE* output) {
     fwrite(tmp_header, sizeof(char), CTR_HEADER_SIZE, output);
 
     // write symbol
-    map_t symbols;
-    map_init(&symbols, sizeof(ctr_addr), CTR_SYMBOL_NAME_SIZE);
-    map_t externals;
-    map_init(&externals, sizeof(int), CTR_SYMBOL_NAME_SIZE);
-    size_t symbol_size = write_symbol_segment(input, output, &symbols, &externals);
+    ctr_t container;
+    ctr_init(&container);
+    map_t* symbols = &container.symbols;
+    map_t* externals = &container.externals;
+    size_t symbol_size = write_symbol_segment(input, output, &container);
 
     // write external symbol
-    size_t external_size = externals.list.count * CTR_SYMBOL_NAME_SIZE;
-    for (unsigned int i = 0; i < externals.list.count; i++) {
-        map_entry_t* entry = list_get(&externals.list, i);
-        fwrite(entry->value, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
+    size_t external_size = externals->list.count * CTR_SYMBOL_NAME_SIZE;
+    for (unsigned int i = 0; i < externals->list.count; i++) {
+        map_entry_t* entry = list_get(&externals->list, i);
+        fwrite(entry->key, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
     }
 
     // jump to text segment
@@ -131,7 +131,7 @@ void assembler(FILE* input, FILE* output) {
             if (arg1 != NULL) {
                 switch (instruction) {
                     case BC_SYNC: {
-                        ctr_addr* addr = (int*)map_find_value(&symbols, arg1);
+                        ctr_addr* addr = (int*)map_find_key(symbols, arg1);
                         if (addr != NULL) {
                             // maybe **addr
                             arg = *addr - text_size / BC_OPCODE_SIZE;
@@ -142,7 +142,7 @@ void assembler(FILE* input, FILE* output) {
                     }
                     case BC_SYNCE:
                     case BC_ASYNCE: { 
-                        int* index = map_find_key(&externals, arg1);
+                        int* index = map_find_key(externals, arg1);
                         if (index) {
                              arg = *index;
                         } else {
@@ -185,8 +185,7 @@ void assembler(FILE* input, FILE* output) {
     }
 
     // release
-    map_release(&symbols);
-    map_release(&externals);
+    ctr_release(&container);
     map_release(&variables);
 
     unsigned int header[] = {

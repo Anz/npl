@@ -12,7 +12,7 @@ int compare(void* a, void* b, size_t size) {
     }
 }
 
-int copy(void** a, void* b, size_t size) {
+void copy(void** a, void* b, size_t size) {
     if (size == MAP_STR) {
         // string mode (variable length)
         size_t len = strlen(b) + 1;

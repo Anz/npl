@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     }
 
     // read module
-    ctr_header_t header = ctr_read_header(module);
+    ctr_t container = ctr_read(module);
 
     // compile bytecode
     map_t library;
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
     //map_add(&library, "integer", &faddr);
     library_add_integer(&library);
     //map_add(&library, "integer_set", &faddr);
-    arch_native_t native = arch_compile(header, module, &library);
+    arch_native_t native = arch_compile(container.header, module, &library);
     fclose(module);
     print_arch_code(native.main, native.text_size);
 
