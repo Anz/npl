@@ -20,20 +20,6 @@ size_t min_s(size_t a, size_t b) {
     return b;
 }
 
-unsigned int line_index(unsigned int line, size_t line_size, size_t offset) {
-    return line * line_size + offset;
-}
-
-char* resize_memory(char* buffer, size_t size) {
-    char* old = buffer;
-    buffer = realloc(buffer, size);
-
-    if (buffer == NULL) {
-        free(old);
-    }
-    return buffer;
-}
-
 unsigned int char2int(char value) {
     unsigned int new_value = value;
     return (new_value << 24) >> 24; 
