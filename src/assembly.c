@@ -95,7 +95,7 @@ void assembler(FILE* input, FILE* output) {
 
     // variables
     map_t variables;
-    map_init(&variables, sizeof(int), CTR_SYMBOL_NAME_SIZE);
+    map_init(&variables, MAP_STR, sizeof(int));
 
     size_t text_size = 0;
     char line[READ_BUFFER_SIZE];
@@ -142,10 +142,7 @@ void assembler(FILE* input, FILE* output) {
                     }
                     case BC_SYNCE:
                     case BC_ASYNCE: { 
-                        char name[CTR_SYMBOL_NAME_SIZE];
-                        memset(name, 0, CTR_SYMBOL_SIZE);
-                        strcpy(name, arg1);
-                        int* index = map_find_value(&externals, name);
+                        int* index = map_find_key(&externals, arg1);
                         if (index) {
                              arg = *index;
                         } else {
@@ -157,20 +154,14 @@ void assembler(FILE* input, FILE* output) {
                         int variable_index = 0;
                         while(arg1 != NULL) {
                             arg += 4;
-                            char name[CTR_SYMBOL_NAME_SIZE];
-                            memset(name, 0, CTR_SYMBOL_SIZE);
-                            strcpy(name, arg1);
-                            map_set(&variables, &variable_index, name);
+                            map_set(&variables, arg1, &variable_index);
                             arg1 = strtok(NULL, ", \t\r\n");
                             variable_index++;
                         }
                         break;
                     }
                     case BC_ARG: {
-                        char name[CTR_SYMBOL_NAME_SIZE];
-                        memset(name, 0, CTR_SYMBOL_SIZE);
-                        strcpy(name, arg1);
-                        ctr_addr* variable = map_find_value(&variables, name);
+                        ctr_addr* variable = map_find_key(&variables, arg1);
                         if (variable) {
                             arg = *variable;
                         } else {

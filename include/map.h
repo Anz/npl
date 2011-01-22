@@ -3,6 +3,8 @@
 
 #include "list.h"
 
+#define MAP_STR 0
+
 // map entry
 typedef struct map_entry {
     void* key;
