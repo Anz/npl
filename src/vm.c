@@ -44,8 +44,8 @@ int main(int argc, char* argv[]) {
     // compile bytecode
     map_t library;
     int faddr = (int)&print_wtf;
-    map_init(&library, sizeof(int));
-    map_add(&library, "print", &faddr);
+    map_init(&library, 0, sizeof(int));
+    map_set(&library, "print", &faddr);
     //map_add(&library, "integer", &faddr);
     library_add_integer(&library);
     //map_add(&library, "integer_set", &faddr);

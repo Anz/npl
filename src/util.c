@@ -1,5 +1,6 @@
 #include "util.h"
 #include <stdlib.h>
+#include <string.h>
 
 unsigned int swap_endian(unsigned int value) {
     return (value << 24) |
@@ -46,4 +47,13 @@ char int2char(int value, unsigned int index) {
 
 char number2str(int value) {
     return 'a' + value;
+}
+
+size_t strnlen(char* str, size_t maxlen) {
+    char* end = memchr(str, '\0', maxlen);
+    if (end) {
+        return (size_t)(end - str);
+    } 
+    
+    return maxlen;
 }

@@ -18,13 +18,15 @@ void jump_to_text_seg(FILE* file) {
     }
 }
 
-size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, list_t* external_symbols) {
+size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, map_t* externals) {
     // jump to text seg
     jump_to_text_seg(input);
 
     size_t size = 0;
     ctr_addr addr = 0;
     char line[READ_BUFFER_SIZE];
+    int external_index = 0;
+
     while(!feof(input)) {
         fgets(line, READ_BUFFER_SIZE, input);
 
@@ -38,10 +40,13 @@ size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, list_t* e
 
         if (colon != NULL) {
             ctr_addr symbol_addr = swap_endian(addr);
-            char* name = strtok(line, ": ");
+            char* token = strtok(line, ": ");
 
             // add symbol to map
-            map_add(symbols, name, &addr);
+            char name[CTR_SYMBOL_NAME_SIZE];
+            memset(name, 0, CTR_SYMBOL_SIZE);
+            strcpy(name, token);
+            map_set(symbols, &addr, name);
 
             // write to file
             fwrite(&symbol_addr, sizeof(char), CTR_ADDR_SIZE, output);
@@ -54,12 +59,10 @@ size_t write_symbol_segment(FILE* input, FILE* output, map_t* symbols, list_t* e
             char code = bc_asm2op(instruction);
             if (code == BC_SYNCE || code == BC_ASYNCE) {
                 char* arg = strtok(NULL, " ,\t\r\n");
-                char name[CTR_SYMBOL_NAME_SIZE+1];
-                memset(name, 0, CTR_SYMBOL_NAME_SIZE+1);
+                char name[CTR_SYMBOL_NAME_SIZE];
+                memset(name, 0, CTR_SYMBOL_NAME_SIZE);
                 strcpy(name, arg);
-                if (list_find(external_symbols, name) < 0) {
-                    list_add(external_symbols, name);
-                }
+                map_set(externals, &external_index, name);
             }
             addr++;
         }
@@ -75,19 +78,16 @@ void assembler(FILE* input, FILE* output) {
 
     // write symbol
     map_t symbols;
-    map_init(&symbols, sizeof(ctr_addr));
-    list_t external_symbols;
-    list_init(&external_symbols, CTR_SYMBOL_NAME_SIZE+1);
-    size_t symbol_size = write_symbol_segment(input, output, &symbols, &external_symbols);
+    map_init(&symbols, sizeof(ctr_addr), CTR_SYMBOL_NAME_SIZE);
+    map_t externals;
+    map_init(&externals, sizeof(int), CTR_SYMBOL_NAME_SIZE);
+    size_t symbol_size = write_symbol_segment(input, output, &symbols, &externals);
 
     // write external symbol
-    list_node external_symbol = list_first(&external_symbols);
-    size_t external_symbol_size = 0;
-    while (external_symbol != NULL) {
-        char* name = list_data(external_symbol);
-        fwrite(name, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
-        external_symbol = list_next(external_symbol);
-        external_symbol_size += CTR_SYMBOL_NAME_SIZE;
+    size_t external_size = externals.list.count * CTR_SYMBOL_NAME_SIZE;
+    for (unsigned int i = 0; i < externals.list.count; i++) {
+        map_entry_t* entry = list_get(&externals.list, i);
+        fwrite(entry->value, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
     }
 
     // jump to text segment
@@ -95,7 +95,7 @@ void assembler(FILE* input, FILE* output) {
 
     // variables
     map_t variables;
-    map_init(&variables, sizeof(int));
+    map_init(&variables, sizeof(int), CTR_SYMBOL_NAME_SIZE);
 
     size_t text_size = 0;
     char line[READ_BUFFER_SIZE];
@@ -131,9 +131,10 @@ void assembler(FILE* input, FILE* output) {
             if (arg1 != NULL) {
                 switch (instruction) {
                     case BC_SYNC: {
-                        map_node_t* symbol = map_find(&symbols, arg1);
-                        if (symbol != NULL) {
-                            arg = (*(ctr_addr*)symbol->value) - text_size / BC_OPCODE_SIZE;
+                        ctr_addr* addr = (int*)map_find_value(&symbols, arg1);
+                        if (addr != NULL) {
+                            // maybe **addr
+                            arg = *addr - text_size / BC_OPCODE_SIZE;
                         } else {
                             arg = 0xFFFFFFFF;
                         }
@@ -141,12 +142,12 @@ void assembler(FILE* input, FILE* output) {
                     }
                     case BC_SYNCE:
                     case BC_ASYNCE: { 
-                        char name[CTR_SYMBOL_NAME_SIZE+1];
-                        memset(name, 0, CTR_SYMBOL_SIZE+1);
+                        char name[CTR_SYMBOL_NAME_SIZE];
+                        memset(name, 0, CTR_SYMBOL_SIZE);
                         strcpy(name, arg1);
-                        int index = list_find(&external_symbols, (void*)name);
-                        if (index >= 0) {
-                             arg = index;
+                        int* index = map_find_value(&externals, name);
+                        if (index) {
+                             arg = *index;
                         } else {
                             arg = 0xFFFFFFFF;
                         }
@@ -156,16 +157,22 @@ void assembler(FILE* input, FILE* output) {
                         int variable_index = 0;
                         while(arg1 != NULL) {
                             arg += 4;
-                            map_add(&variables, arg1, &variable_index);
+                            char name[CTR_SYMBOL_NAME_SIZE];
+                            memset(name, 0, CTR_SYMBOL_SIZE);
+                            strcpy(name, arg1);
+                            map_set(&variables, &variable_index, name);
                             arg1 = strtok(NULL, ", \t\r\n");
                             variable_index++;
                         }
                         break;
                     }
                     case BC_ARG: {
-                        map_node_t* variable = map_find(&variables, arg1);
-                        if (variable != NULL) {
-                            arg = *(int*)variable->value;
+                        char name[CTR_SYMBOL_NAME_SIZE];
+                        memset(name, 0, CTR_SYMBOL_SIZE);
+                        strcpy(name, arg1);
+                        ctr_addr* variable = map_find_value(&variables, name);
+                        if (variable) {
+                            arg = *variable;
                         } else {
                             fprintf(stderr, "error could not find variable: %s\n", arg1);
                         }
@@ -188,14 +195,15 @@ void assembler(FILE* input, FILE* output) {
 
     // release
     map_release(&symbols);
-    list_release(&external_symbols);
+    map_release(&externals);
+    map_release(&variables);
 
     unsigned int header[] = {
         swap_endian(CTR_MAGIC_NUMBER),
         swap_endian(CTR_CONTAINER_VERSION),
         swap_endian(BC_BYTECODE_VERSION),
         swap_endian(symbol_size),
-        swap_endian(external_symbol_size),
+        swap_endian(external_size),
         swap_endian(text_size)
     };
     fseek(output, 0, SEEK_SET);

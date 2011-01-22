@@ -2,95 +2,70 @@
 #include <stdlib.h>
 #include <string.h>
 
-void list_set_pointer(list_node node, void* pointer) {
-    memcpy(node, &pointer, sizeof(void*));
-}
-
-void list_set_node(list_node node, void* data, size_t size) {
-    list_set_pointer(node, NULL);
-    memcpy(node + sizeof(void*), data, size);
-}
-
-void* list_get_next(list_node node) {
-    void* pointer;
-    memcpy(&pointer, node, sizeof(void*));
-    return pointer;
-}
-
 void list_init(list_t* list, size_t data_size) {
     list->count = 0;
-    list->node_size = sizeof(void*) + data_size;
+    list->data_size = data_size;
     list->first = NULL;
-    list->last = NULL;
 }
 
 void list_add(list_t* list, void* data) {
-    void* node = calloc(list->node_size, sizeof(char));
-    list_set_node(node, data, list->node_size - sizeof(void*));
+    void* memory = malloc(sizeof(list_item_t) + list->data_size);
 
-    // if list is empty
+    list_item_t* item = (list_item_t*)memory;
+    item->data = memory + sizeof(list_item_t);
+    memcpy(item->data, data, list->data_size);
+
     if (list->count == 0) {
-        list->first = node;
+        // if list is empty
+        list->first = item;
+        item->previous = item;
+        item->next = item;
     } else {
-        list_set_pointer(list->last, node);
+        // if list has aleast 1 item
+        item->previous = list->first->previous;
+        item->next = list->first;
+        list->first->previous->next = item;
+        list->first->previous = item;
     }
-
-    list->last = node;
     list->count++;
 }
 
-void* list_data(list_node node) {
-    return node + sizeof(void*);
-}
-
-list_node list_get(list_t* list, unsigned int index) {
-    list_node node = list_first(list);
-    unsigned int count = 0;
-    while (node != NULL) {
-        if (count == index) {
-            return node;
-        }
-        node = list_next(node);
-        count++;
+void* list_get(list_t* list, unsigned int index) {
+    if (list->count == 0) {
+        // list empty
+        return NULL;
     }
+
+    list_item_t* item = list->first;
+    for (int i = 0; i < list->count; i++) {
+        if (i == index) {
+            // found
+            return item->data;
+        }
+
+        // get next
+        item = item->next;
+    }
+
+    // not found
     return NULL;
 }
 
-int list_find(list_t* list, void* data) {
-    list_node node = list_first(list);
-    int index = 0;
-    while (node != NULL) {
-        if (memcmp(list_data(node), data, list->node_size) == 0) {
-            return index;
-        }
-        node = list_next(node);
-        index++;
-    }
-    return -1;
-
-}
-
-list_node list_first(list_t* list) {
-    return list->first;
-}
-
-list_node list_next(list_node iterator) {
-    return list_get_next(iterator);
-}
-
 void list_release(list_t* list) {
-    list_node previous = NULL;
-    list_node current = list_first(list);
+    // delete all items
+    list_item_t* item = list->first;
+    for (int i = 0; i < list->count; i++) {
+        list_item_t* deletable = item;
 
-    while (previous != NULL || current != NULL) {
-        if (previous != NULL) {
-            free(previous);
-        }
+        // get next
+        item = item->next;
 
-        previous = current;
-
-        if (current != NULL) {
-            current = list_next(current);
-        }
+        // delete
+        free(deletable);
     }
+
+    // reset list
+    list->first = NULL;
+    list->count = 0;
+    list->data_size = 0;
 }

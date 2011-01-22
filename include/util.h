@@ -11,5 +11,6 @@ char* resize_memory(char* buffer, size_t size);
 unsigned int char2int(char value);
 char int2char(int value, unsigned int index);
 char number2str(int value);
+size_t strnlen(char* str, size_t maxlen);
 
 #endif // UTIL_H

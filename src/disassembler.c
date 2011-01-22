@@ -101,11 +101,11 @@ void print_usage() {
 
 map_t collect_symbols(FILE* file, ctr_header_t header) {
     map_t symbols;
-    map_init(&symbols, CTR_SYMBOL_NAME_SIZE+1);
+    map_init(&symbols, CTR_SYMBOL_NAME_SIZE, sizeof(ctr_addr));
     unsigned int symbol_count = ctr_symbol_count(header);
     for(unsigned int index = 0; index < symbol_count; index++) {
         ctr_symbol_t symbol = ctr_symbol_read(file, index);
-        map_addi(&symbols, symbol.addr, symbol.name);
+        map_set(&symbols, symbol.name, &symbol.addr);
     }
     return symbols;
 }
@@ -143,19 +143,15 @@ void print_symbols(FILE* file, ctr_header_t header) {
     printf("\n");
 }
 
-void print_external_symbol_segment(list_t external_symbol, ctr_header_t header) {
+void print_external_symbol_segment(list_t externals, ctr_header_t header) {
     size_t offset = ctr_external_offset(header);
 
     printf("external symbol segment:\n\n");
     printf("%10s\tname\n\n", "");
 
-    list_node symbol = list_first(&external_symbol);
-    int i = 0;
-    while (symbol != NULL) {
-        char* name = list_data(symbol);
-        printf("%08X:\t%s\n", offset + i, name);
-        symbol = list_next(symbol);
-        i += CTR_SYMBOL_NAME_SIZE;
+    for (unsigned int i = 0; i < externals.count; i++) {
+        char* name = list_get(&externals, i);
+        printf("%08X:\t%s\n", offset + i * CTR_SYMBOL_NAME_SIZE, name);
     }
     printf("\n");
 }
@@ -168,9 +164,9 @@ void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* externa
     for(unsigned int i = 0; i < text_count; i++) {
         ctr_bytecode_t bc = ctr_text_read(file, header, i);
 
-        map_node_t* symbol = map_findi(symbols, i);
-        if (symbol != NULL) {
-            printf("%08X <%s>:\n", i, (char*)symbol->value);
+        char* symbol = (char*)map_find_value(symbols, &i);
+        if (symbol) {
+            printf("%08X <%s>:\n", i, symbol);
         }
 
         printf(" %08X:\t", offset + i * BC_OPCODE_SIZE);
@@ -185,9 +181,10 @@ void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* externa
         switch (bc.instruction) {
             case BC_SYNC:
             case BC_ASYNC: {
-                map_node_t* symbol_node = map_findi(symbols, i + bc.argument);
-                if (symbol_node != NULL) {
-                    printf("%s\n", (char*)symbol_node->value);
+                ctr_addr addr = i + bc.argument;
+                char* symbol = (char*)map_find_value(symbols, &addr);
+                if (symbol) {
+                    printf("%s\n", symbol);
                 } else {
                     printf("0x%08X\n", bc.argument);
                 }
@@ -195,9 +192,9 @@ void print_text(FILE* file, ctr_header_t header, map_t* symbols, list_t* externa
             }
             case BC_SYNCE:
             case BC_ASYNCE: {
-                list_node symbol = list_get(external_symbols, bc.argument);
+                char* symbol = list_get(external_symbols, bc.argument);
                 if (symbol != NULL) {
-                    printf("%s\n", (char*)list_data(symbol));
+                    printf("%s\n", symbol);
                 } else {
                     printf("0x%08X\n", bc.argument);
                 }

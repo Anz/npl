@@ -43,13 +43,13 @@ arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library) {
     void* externals[external_count];
     for (unsigned int i = 0; i < external_count; i++) {
         ctr_external_symbol_t external = ctr_external_read(input, header, i);
-        map_node_t* function = map_find(library, external.name);
-        if (function == NULL) {
+        void* function = map_find_key(library, external.name);
+        if (!function) {
             fprintf(stderr, "function not found: %s\n", external.name);
             externals[i] = 0;
             continue;
         }
-        memcpy(&externals[i], function->value, sizeof(int));
+        memcpy(&externals[i], function, sizeof(int));
     }
 
     // alloc space
