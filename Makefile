@@ -9,7 +9,10 @@ NAS = ${NAS_SRC:%.c=bin/%.o}
 NIS = ${NIS_SRC:%.c=bin/%.o}
 NVM = ${NVM_SRC:%.c=bin/%.o}
 
-all: bin/nas bin/nis bin/nvm
+all: bin bin/nas bin/nis bin/nvm
+
+bin:
+	mkdir -p bin
 
 bin/nas: ${NAS}
 	${CC} ${CFLAGS} -obin/nas ${NAS}
@@ -24,4 +27,4 @@ bin/%.o: src/%.c
 	${CC} ${CFLAGS} -o${<:src/%.c=bin/%.o} -c $<
 
 clean:
-	rm -rf bin/*
+	rm -rf bin
