@@ -1,19 +1,6 @@
 #include "integer.h"
 #include "stdio.h"
 
-void library_add_integer(map_t* map) {
-    int func_integer = (int)&integer;
-    map_set(map, "integer", &func_integer);
-    int func_integer_add = (int)&integer_add;
-    map_set(map, "integer_add", &func_integer_add);
-    int func_integer_sub = (int)&integer_sub;
-    map_set(map, "integer_sub", &func_integer_sub);
-    int func_integer_mul = (int)&integer_mul;
-    map_set(map, "integer_mul", &func_integer_mul);
-    int func_integer_div = (int)&integer_div;
-    map_set(map, "integer_div", &func_integer_div);
-}
-
 void integer(int* i, int value) {
     printf("integer set %08X from %i to ", (int)i, *i);
     *i = value;

@@ -2,6 +2,7 @@
 #define ARCH_H
 
 #include "container.h"
+#include "library.h"
 
 typedef struct arch_native {
     void (*main)();
@@ -10,7 +11,7 @@ typedef struct arch_native {
     void* data;
 } arch_native_t;
 
-arch_native_t arch_compile(ctr_t* container, map_t* library);
+arch_native_t arch_compile(ctr_t* container, library_t* library);
 
 #endif
 

@@ -6,7 +6,7 @@
 #include "job.h"
 #include "thread.h"
 #include "map.h"
-#include "integer.h"
+#include "library.h"
 
 void print_arch_code(void* address, size_t seg_size);
 
@@ -43,13 +43,9 @@ int main(int argc, char* argv[]) {
     fclose(module);
 
     // compile bytecode
-    map_t library;
-    int faddr = (int)&print_wtf;
-    map_init(&library, 0, sizeof(int));
-    map_set(&library, "print", &faddr);
-    //map_add(&library, "integer", &faddr);
-    library_add_integer(&library);
-    //map_add(&library, "integer_set", &faddr);
+    library_t library;
+    library_init(&library);
+    library_add(&library, "print", &print_wtf);
     arch_native_t native = arch_compile(&container, &library);
     print_arch_code(native.main, native.text_size);
 
@@ -82,6 +78,7 @@ int main(int argc, char* argv[]) {
     // releasep
     job_list_release(&jobs);
     free(native.text);
+    library_release(&library);
 
     printf("end\n");
 

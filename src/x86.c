@@ -35,7 +35,7 @@ void write4(unsigned int data, char* buffer, long* index) {
     *index += 4; 
 }
 
-arch_native_t arch_compile(ctr_t* container,  map_t* library) {
+arch_native_t arch_compile(ctr_t* container,  library_t* library) {
     arch_native_t native;
 
     ctr_header_t* header = &container->header;
@@ -93,16 +93,13 @@ arch_native_t arch_compile(ctr_t* container,  map_t* library) {
                     fprintf(stderr, "external symbol not fount: %i\n", bc->argument);
                     continue;
                 }
-                int* function = (int*)map_find_key(library, symbol);
+                void* function = library_get(library, symbol);
                 if (!function) {
                     fprintf(stderr, "undefined reference to extneral symbol '%s'\n", symbol);
                     continue;
                 }
-                //void* function = *function_ptr;
-                //void* function;
-                //memcpy(&function, function_ptr, sizeof(int));
                 write1(X86_CALL, native.text, &index);
-                void* addr = call_addr(native.text + index + 3, (void*)*function);
+                void* addr = call_addr(native.text + index + 3, function);
                 write4((unsigned int)addr, native.text, &index);
 
                 // reset stack pointer
