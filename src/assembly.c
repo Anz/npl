@@ -9,6 +9,11 @@
 #define READ_BUFFER_SIZE 1024
 #define SEGMENT_BUFFER_SIZE 1024
 
+typedef struct command {
+    char code;
+    list_t args;
+} command_t;
+
 void jump_to_text_seg(FILE* file) {
     fseek(file, 0, SEEK_SET);
     char line[READ_BUFFER_SIZE];
@@ -18,14 +23,13 @@ void jump_to_text_seg(FILE* file) {
     }
 }
 
-size_t write_symbol_segment(FILE* input, FILE* output, ctr_t* container) {
+void read_file(FILE* input, ctr_t* container, list_t* commands) {
     // jump to text seg
     jump_to_text_seg(input);
 
     map_t* symbols = &container->symbols;
     map_t* externals = &container->externals;
 
-    size_t size = 0;
     ctr_addr addr = 0;
     char line[READ_BUFFER_SIZE];
     int external_index = 0;
@@ -42,160 +46,114 @@ size_t write_symbol_segment(FILE* input, FILE* output, ctr_t* container) {
         }
 
         if (colon != NULL) {
-            ctr_addr symbol_addr = swap_endian(addr);
             char* name = strtok(line, ": ");
-
             // add symbol to map
             map_set(symbols, name, &addr);
-
-            // write to file
-            fwrite(&symbol_addr, sizeof(char), CTR_ADDR_SIZE, output);
-            fwrite(name, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
-            size += CTR_SYMBOL_SIZE;
-           
         }
 
-        if (instruction != NULL) {
-            char code = bc_asm2op(instruction);
-            if (code == BC_SYNCE || code == BC_ASYNCE) {
-                char* arg = strtok(NULL, " ,\t\r\n");
-                if (!map_find_key(externals, arg)) {
-                    map_set(externals, arg, &external_index);
+        if (instruction) {
+            command_t command;
+            command.code = bc_asm2op(instruction);
+            list_init(&command.args, 50);
+            char* arg = strtok(NULL, " ,\t\r\n");
+            while (arg) {
+                char text[50];
+                memset(text, 0, 50);
+                strncpy(text, arg, 50);
+                list_add(&command.args, text);
+                arg = strtok(NULL, " ,\t\r\n");
+            }
+            if (command.code == BC_SYNCE || command.code == BC_ASYNCE) {
+                char* key = (char*)list_get(&command.args, 0);
+                if (!map_find_key(externals, key)) {
+                    map_set(externals, key, &external_index);
                     external_index++;
                 }
             }
+            list_add(commands, &command);
             addr++;
         }
     }
-    return size;
 }
 
 void assembler(FILE* input, FILE* output) {
-    // write tmp header
-    char tmp_header[CTR_HEADER_SIZE];
-    memset(tmp_header, 0, CTR_HEADER_SIZE);
-    fwrite(tmp_header, sizeof(char), CTR_HEADER_SIZE, output);
-
-    // write symbol
+    // read file
     ctr_t container;
     ctr_init(&container);
     map_t* symbols = &container.symbols;
     map_t* externals = &container.externals;
-    size_t symbol_size = write_symbol_segment(input, output, &container);
+    list_t* texts = &container.texts;
 
-    // write external symbol
-    size_t external_size = externals->list.count * CTR_SYMBOL_NAME_SIZE;
-    for (unsigned int i = 0; i < externals->list.count; i++) {
-        map_entry_t* entry = list_get(&externals->list, i);
-        fwrite(entry->key, sizeof(char), CTR_SYMBOL_NAME_SIZE, output);
-    }
-
-    // jump to text segment
-    jump_to_text_seg(input);
+    list_t commands;
+    list_init(&commands, sizeof(command_t));
+    read_file(input, &container, &commands);
 
     // variables
     map_t variables;
     map_init(&variables, MAP_STR, sizeof(int));
 
-    size_t text_size = 0;
-    char line[READ_BUFFER_SIZE];
-    int running = 1;
-    while(!feof(input) && running) {
-        memset(line, 0, READ_BUFFER_SIZE);
-        fgets(line, READ_BUFFER_SIZE, input);
+    for (unsigned int i = 0; i < commands.count; i++) {
+        command_t* command = list_get(&commands, i);
+        ctr_bytecode_t bc;
+        bc.instruction = command->code;
+        bc.argument = 0;
 
-        if (line[0] == ASM_SEGMENT) {
-            running = 0;
-            continue;
-        }
-
-        if (line[0] == ASM_COMMENT) {
-            continue;
-        }
-
-        char* colon = strchr(line, ':');
-        char* mnemonic = NULL;
-        if (colon == NULL) {
-            mnemonic = strtok(line, ", \t\r\n");
-        } else {
-            mnemonic = strtok(colon+1, ", \t\r\n"); 
-        }
-
-
-        // on instruction
-        if (mnemonic != NULL) {
-            char instruction = bc_asm2op(mnemonic);
-            unsigned int arg = 0x0;
-
-            char* arg1 = strtok(NULL, ", \t\r\n"); 
-            if (arg1 != NULL) {
-                switch (instruction) {
-                    case BC_SYNC: {
-                        ctr_addr* addr = (int*)map_find_key(symbols, arg1);
-                        if (addr != NULL) {
-                            // maybe **addr
-                            arg = *addr - text_size / BC_OPCODE_SIZE;
-                        } else {
-                            arg = 0xFFFFFFFF;
-                        }
-                        break;
+        char* arg1 = list_get(&command->args, 0);
+        if (command->args.count > 0) {
+            switch (command->code) {
+                case BC_SYNC: {
+                    ctr_addr* addr = (int*)map_find_key(symbols, arg1);
+                    if (addr) {
+                        // maybe **addr
+                        bc.argument = *addr - i;
+                    } else {
+                        fprintf(stderr, "sync address not found %s\n", arg1); 
                     }
-                    case BC_SYNCE:
-                    case BC_ASYNCE: { 
-                        int* index = map_find_key(externals, arg1);
-                        if (index) {
-                             arg = *index;
-                        } else {
-                            arg = 0xFFFFFFFF;
-                        }
-                        break;
+                    break;
+                }
+                case BC_SYNCE:
+                case BC_ASYNCE: { 
+                    int* index = map_find_key(externals, arg1);
+                    if (index) {
+                        bc.argument = *index;
+                    } else {
+                        fprintf(stderr, "(a)synce address not found %s\n", arg1); 
                     }
-                    case BC_ENTER: {
-                        int variable_index = 0;
-                        while(arg1 != NULL) {
-                            arg += 4;
-                            map_set(&variables, arg1, &variable_index);
-                            arg1 = strtok(NULL, ", \t\r\n");
-                            variable_index++;
-                        }
-                        break;
+                    break;
+                }
+                case BC_ENTER: {
+                    for (unsigned int i = 0; i < command->args.count; i++) {
+                        arg1 = list_get(&command->args, i);
+                        bc.argument += 4;
+                        int variable_index = i;
+                        map_set(&variables, arg1, &variable_index);
                     }
-                    case BC_ARG: {
-                        ctr_addr* variable = map_find_key(&variables, arg1);
-                        if (variable) {
-                            arg = *variable;
-                        } else {
-                            fprintf(stderr, "error could not find variable: %s\n", arg1);
-                        }
-                        break;
+                    break;
+                }
+                case BC_ARG: {
+                    ctr_addr* variable = map_find_key(&variables, arg1);
+                    if (variable) {
+                        bc.argument = *variable;
+                    } else {
+                        fprintf(stderr, "error could not find variable: %s\n", arg1);
                     }
-                    case BC_ARGV: {
-                        arg = atoi(arg1);
-                        break;
-                    }
+                    break;
+                }
+                case BC_ARGV: {
+                    bc.argument = atoi(arg1);
+                    break;
                 }
             }
-
-            // write
-            fwrite(&instruction, sizeof(char), 1, output);
-            arg = swap_endian(arg);
-            fwrite(&arg, sizeof(int), 1, output);
-            text_size += BC_OPCODE_SIZE;
         }
+
+        list_add(texts, &bc);
     }
+
+    // write container
+    ctr_write(output, &container);
 
     // release
     ctr_release(&container);
     map_release(&variables);
 
-    unsigned int header[] = {
-        swap_endian(CTR_MAGIC_NUMBER),
-        swap_endian(CTR_CONTAINER_VERSION),
-        swap_endian(BC_BYTECODE_VERSION),
-        swap_endian(symbol_size),
-        swap_endian(external_size),
-        swap_endian(text_size)
-    };
-    fseek(output, 0, SEEK_SET);
-    fwrite(header, sizeof(char), CTR_HEADER_SIZE, output);
 }

@@ -96,6 +96,46 @@ ctr_t ctr_read(FILE* file) {
 
 // write file
 void ctr_write(FILE* file, ctr_t* container) {
+    map_t* symbols = &container->symbols;
+    map_t* externals = &container->externals;
+    list_t* texts = &container->texts;
+
+    // write header
+    int symbol_size = symbols->list.count * CTR_SYMBOL_SIZE;
+    int external_size = externals->list.count * CTR_SYMBOL_NAME_SIZE;
+    int text_size = texts->count * BC_OPCODE_SIZE;
+    unsigned int header[] = {
+        swap_endian(CTR_MAGIC_NUMBER),
+        swap_endian(CTR_CONTAINER_VERSION),
+        swap_endian(BC_BYTECODE_VERSION),
+        swap_endian(symbol_size),
+        swap_endian(external_size),
+        swap_endian(text_size)
+    };
+    fwrite(header, sizeof(char), CTR_HEADER_SIZE, file);
+
+    // write to file
+    for (unsigned int i = 0; i < symbols->list.count; i++) {
+        map_entry_t* entry = list_get(&symbols->list, i);
+        ctr_addr addr = swap_endian(*(int*)entry->value);
+        fwrite(&addr, sizeof(char), CTR_ADDR_SIZE, file);
+        fwrite(entry->key, sizeof(char), CTR_SYMBOL_NAME_SIZE, file);
+    }
+
+    // write external symbol
+    for (unsigned int i = 0; i < externals->list.count; i++) {
+        map_entry_t* entry = list_get(&externals->list, i);
+        fwrite(entry->key, sizeof(char), CTR_SYMBOL_NAME_SIZE, file);
+    }
+
+    // write
+    for (unsigned int i = 0; i < texts->count; i++) {
+        ctr_bytecode_t* bc = list_get(texts, i);
+        fwrite(&bc->instruction, sizeof(char), 1, file);
+        int arg = swap_endian(bc->argument);
+        fwrite(&arg, sizeof(int), 1, file);
+    }
+
 }
 
 // release container
