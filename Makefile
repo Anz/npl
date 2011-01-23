@@ -9,15 +9,15 @@ NAS = ${NAS_SRC:%.c=bin/%.o}
 NIS = ${NIS_SRC:%.c=bin/%.o}
 NVM = ${NVM_SRC:%.c=bin/%.o}
 
-all: nas nis nvm
+all: bin/nas bin/nis bin/nvm
 
-nas: ${NAS}
+bin/nas: ${NAS}
 	${CC} ${CFLAGS} -obin/nas ${NAS}
 
-nis: ${NIS}
+bin/nis: ${NIS}
 	${CC} ${CFLAGS} -obin/nis ${NIS}
 
-nvm: ${NVM}
+bin/nvm: ${NVM}
 	${CC} ${CFLAGS} -obin/nvm ${NVM} -lpthread
 
 bin/%.o: src/%.c
