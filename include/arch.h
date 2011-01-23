@@ -1,9 +1,7 @@
 #ifndef ARCH_H
 #define ARCH_H
 
-#include <stddef.h>
 #include "container.h"
-#include "map.h"
 
 typedef struct arch_native {
     void (*main)();
@@ -12,7 +10,7 @@ typedef struct arch_native {
     void* data;
 } arch_native_t;
 
-arch_native_t arch_compile(ctr_header_t header, FILE* input, map_t* library);
+arch_native_t arch_compile(ctr_t* container, map_t* library);
 
 #endif
 
