@@ -1,8 +1,8 @@
 include Makefile.common
 
-LIB_SRC = util.c list.c map.c bytecode.c container.c
+LIB_SRC = util.c list.c map.c container.c
 NAS_SRC = ${LIB_SRC} assembly.c assembler.c
-NIS_SRC = ${LIB_SRC} disassembler.c
+NIS_SRC = ${LIB_SRC} assembly.c disassembler.c
 NVM_SRC = ${LIB_SRC} library.c job.c x86.c thread.c integer.c vm.c
 
 NAS = ${NAS_SRC:%.c=bin/%.o}

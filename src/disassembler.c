@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <container.h>
-#include <bytecode.h>
+#include "container.h"
+#include "assembly.h"
 #include <stdbool.h>
 #include <string.h>
 #include "util.h"
@@ -142,7 +142,7 @@ void print_text(ctr_t* container) {
             printf("%08X <%s>:\n", i, symbol);
         }
 
-        printf(" %08X:\t", offset + i * BC_OPCODE_SIZE);
+        printf(" %08X:\t", offset + i * CTR_BYTECODE_SIZE);
         printf("%08X\t", i);
         printf("%02X ", char2int(bc->instruction));
         printf("%02X ", char2int(int2char(bc->argument, 0)));

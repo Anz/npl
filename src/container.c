@@ -1,4 +1,3 @@
-#include "bytecode.h"
 #include "container.h"
 #include "util.h"
 #include <stdlib.h>
@@ -55,10 +54,10 @@ void read_externals(FILE* file, size_t size, map_t* externals) {
 
 // read text segment
 void read_texts(FILE* file, size_t size, list_t* texts) {
-    for (int i = 0; i < size / BC_OPCODE_SIZE; i++) {
+    for (int i = 0; i < size / CTR_BYTECODE_SIZE; i++) {
         // read
-        char buffer[BC_OPCODE_SIZE];
-        fread(buffer, BC_OPCODE_SIZE, 1, file);
+        char buffer[CTR_BYTECODE_SIZE];
+        fread(buffer, CTR_BYTECODE_SIZE, 1, file);
 
         // fill data
         ctr_bytecode_t bc;
@@ -103,11 +102,11 @@ void ctr_write(FILE* file, ctr_t* container) {
     // write header
     int symbol_size = symbols->list.count * CTR_SYMBOL_SIZE;
     int external_size = externals->list.count * CTR_SYMBOL_NAME_SIZE;
-    int text_size = texts->count * BC_OPCODE_SIZE;
+    int text_size = texts->count * CTR_BYTECODE_SIZE;
     unsigned int header[] = {
         swap_endian(CTR_MAGIC_NUMBER),
         swap_endian(CTR_CONTAINER_VERSION),
-        swap_endian(BC_BYTECODE_VERSION),
+        swap_endian(CTR_BYTECODE_VERSION),
         swap_endian(symbol_size),
         swap_endian(external_size),
         swap_endian(text_size)

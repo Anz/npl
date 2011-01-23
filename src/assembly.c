@@ -1,159 +1,99 @@
-#include <string.h>
-#include <stdlib.h>
 #include "assembly.h"
-#include "bytecode.h"
-#include "util.h"
-#include "map.h"
-#include "list.h"
+#include <stdlib.h>
+#include <string.h>
 
-#define READ_BUFFER_SIZE 1024
-#define SEGMENT_BUFFER_SIZE 1024
+char bc_asm2op(char* assembly) {
 
-typedef struct command {
-    char code;
-    list_t args;
-} command_t;
-
-void jump_to_text_seg(FILE* file) {
-    fseek(file, 0, SEEK_SET);
-    char line[READ_BUFFER_SIZE];
-    memset(line, 0, READ_BUFFER_SIZE);
-    while(!feof(file) && memcmp(line, ".text", 5) != 0)  {
-        fgets(line, READ_BUFFER_SIZE, file);
+    if (strcmp(BC_ASM_NOP,assembly) == 0) {
+        return BC_NOP;
     }
+
+    if (strcmp(BC_ASM_ARG,assembly) == 0) {
+        return BC_ARG;
+    }
+
+    if (strcmp(BC_ASM_SYNC,assembly) == 0) {
+        return BC_SYNC;
+    }
+
+    if (strcmp(BC_ASM_ASYNC,assembly) == 0) {
+        return BC_ASYNC;
+    }
+
+    if (strcmp(BC_ASM_RET,assembly) == 0) {
+        return BC_RET;
+    }
+
+    if (strcmp(BC_ASM_CMP,assembly) == 0) {
+        return BC_CMP;
+    }
+
+    if (strcmp(BC_ASM_JMP,assembly) == 0) {
+        return BC_JMP;
+    }
+
+    if (strcmp(BC_ASM_JE,assembly) == 0) {
+        return BC_JE;
+    }
+
+    if (strcmp(BC_ASM_JNE,assembly) == 0) {
+        return BC_JNE;
+    }
+
+    if (strcmp(BC_ASM_JL,assembly) == 0) {
+        return BC_JL;
+    }
+
+    if (strcmp(BC_ASM_JLE,assembly) == 0) {
+        return BC_JLE;
+    }
+
+    if (strcmp(BC_ASM_JG,assembly) == 0) {
+        return BC_JG;
+    }
+
+    if (strcmp(BC_ASM_JGE,assembly) == 0) {
+        return BC_JGE;
+    }
+
+    if (strcmp(BC_ASM_ENTER,assembly) == 0) {
+        return BC_ENTER;
+    }
+
+    if (strcmp(BC_ASM_SYNCE,assembly) == 0) {
+        return BC_SYNCE;
+    }
+
+    if (strcmp(BC_ASM_ASYNCE,assembly) == 0) {
+        return BC_ASYNCE;
+    }
+
+    if (strcmp(BC_ASM_ARGV,assembly) == 0) {
+        return BC_ARGV;
+    }
+
+    return -1;
 }
 
-void read_file(FILE* input, ctr_t* container, list_t* commands) {
-    // jump to text seg
-    jump_to_text_seg(input);
-
-    map_t* symbols = &container->symbols;
-    map_t* externals = &container->externals;
-
-    ctr_addr addr = 0;
-    char line[READ_BUFFER_SIZE];
-    int external_index = 0;
-
-    while(!feof(input)) {
-        fgets(line, READ_BUFFER_SIZE, input);
-
-        char* colon = strchr(line, ':');
-        char* instruction = NULL;
-        if (colon == NULL) {
-            instruction = strtok(line, " \t\r\n");
-        } else {
-            instruction = strtok(colon+1, " \t\r\n"); 
-        }
-
-        if (colon != NULL) {
-            char* name = strtok(line, ": ");
-            // add symbol to map
-            map_set(symbols, name, &addr);
-        }
-
-        if (instruction) {
-            command_t command;
-            command.code = bc_asm2op(instruction);
-            list_init(&command.args, 50);
-            char* arg = strtok(NULL, " ,\t\r\n");
-            while (arg) {
-                char text[50];
-                memset(text, 0, 50);
-                strncpy(text, arg, 50);
-                list_add(&command.args, text);
-                arg = strtok(NULL, " ,\t\r\n");
-            }
-            if (command.code == BC_SYNCE || command.code == BC_ASYNCE) {
-                char* key = (char*)list_get(&command.args, 0);
-                if (!map_find_key(externals, key)) {
-                    map_set(externals, key, &external_index);
-                    external_index++;
-                }
-            }
-            list_add(commands, &command);
-            addr++;
-        }
+char* bc_op2asm(char opcode) {
+    switch(opcode) {
+        case BC_NOP: return BC_ASM_NOP;
+        case BC_ARG: return BC_ASM_ARG;
+        case BC_SYNC: return BC_ASM_SYNC;
+        case BC_ASYNC: return BC_ASM_ASYNC;
+        case BC_RET: return BC_ASM_RET;
+        case BC_CMP: return BC_ASM_CMP;
+        case BC_JMP: return BC_ASM_JMP;
+        case BC_JE: return BC_ASM_JE;
+        case BC_JNE: return BC_ASM_JNE;
+        case BC_JL: return BC_ASM_JL;
+        case BC_JLE: return BC_ASM_JLE;
+        case BC_JG: return BC_ASM_JG;
+        case BC_JGE: return BC_ASM_JGE;
+        case BC_ENTER: return BC_ASM_ENTER;
+        case BC_SYNCE: return BC_ASM_SYNCE;
+        case BC_ASYNCE: return BC_ASM_ASYNCE;
+        case BC_ARGV: return BC_ASM_ARGV;
+        default: return NULL;
     }
-}
-
-void assembler(FILE* input, FILE* output) {
-    // read file
-    ctr_t container;
-    ctr_init(&container);
-    map_t* symbols = &container.symbols;
-    map_t* externals = &container.externals;
-    list_t* texts = &container.texts;
-
-    list_t commands;
-    list_init(&commands, sizeof(command_t));
-    read_file(input, &container, &commands);
-
-    // variables
-    map_t variables;
-    map_init(&variables, MAP_STR, sizeof(int));
-
-    for (unsigned int i = 0; i < commands.count; i++) {
-        command_t* command = list_get(&commands, i);
-        ctr_bytecode_t bc;
-        bc.instruction = command->code;
-        bc.argument = 0;
-
-        char* arg1 = list_get(&command->args, 0);
-        if (command->args.count > 0) {
-            switch (command->code) {
-                case BC_SYNC: {
-                    ctr_addr* addr = (int*)map_find_key(symbols, arg1);
-                    if (addr) {
-                        // maybe **addr
-                        bc.argument = *addr - i;
-                    } else {
-                        fprintf(stderr, "sync address not found %s\n", arg1); 
-                    }
-                    break;
-                }
-                case BC_SYNCE:
-                case BC_ASYNCE: { 
-                    int* index = map_find_key(externals, arg1);
-                    if (index) {
-                        bc.argument = *index;
-                    } else {
-                        fprintf(stderr, "(a)synce address not found %s\n", arg1); 
-                    }
-                    break;
-                }
-                case BC_ENTER: {
-                    for (unsigned int i = 0; i < command->args.count; i++) {
-                        arg1 = list_get(&command->args, i);
-                        bc.argument += 4;
-                        int variable_index = i;
-                        map_set(&variables, arg1, &variable_index);
-                    }
-                    break;
-                }
-                case BC_ARG: {
-                    ctr_addr* variable = map_find_key(&variables, arg1);
-                    if (variable) {
-                        bc.argument = *variable;
-                    } else {
-                        fprintf(stderr, "error could not find variable: %s\n", arg1);
-                    }
-                    break;
-                }
-                case BC_ARGV: {
-                    bc.argument = atoi(arg1);
-                    break;
-                }
-            }
-        }
-
-        list_add(texts, &bc);
-    }
-
-    // write container
-    ctr_write(output, &container);
-
-    // release
-    ctr_release(&container);
-    map_release(&variables);
-
 }

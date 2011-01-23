@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "util.h"
-#include "bytecode.h"
+#include "assembly.h"
 
 // x86 opcdoes
 #define X86_ENTER 0xC8
@@ -44,7 +44,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
     list_t* texts = &container->texts;
 
     // alloc space
-    native.text_size = header->text_size / BC_OPCODE_SIZE * 5 + header->symbol_size / CTR_SYMBOL_SIZE * 8;
+    native.text_size = header->text_size / CTR_BYTECODE_SIZE * 5 + header->symbol_size / CTR_SYMBOL_SIZE * 8;
     native.text = malloc(native.text_size);
 
     long index = 0;

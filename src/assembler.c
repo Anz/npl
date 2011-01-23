@@ -1,11 +1,167 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include "container.h"
-#include "bytecode.h"
+#include <stdlib.h>
+#include <stdio.h>
 #include "assembly.h"
+#include "util.h"
+#include "container.h"
 
+#define READ_BUFFER_SIZE 1024
+#define SEGMENT_BUFFER_SIZE 1024
+#define ASM_DATA_SEGMENT "data"
+#define ASM_TEXT_SEGMENT "text"
+#define ASM_COMMENT '#'
+#define ASM_SEGMENT '.'
+#define ASM_TAB '\t'
+#define ASM_SPACE ' '
 
+typedef struct command {
+    char code;
+    list_t args;
+} command_t;
+
+void jump_to_text_seg(FILE* file) {
+    fseek(file, 0, SEEK_SET);
+    char line[READ_BUFFER_SIZE];
+    memset(line, 0, READ_BUFFER_SIZE);
+    while(!feof(file) && memcmp(line, ".text", 5) != 0)  {
+        fgets(line, READ_BUFFER_SIZE, file);
+    }
+}
+
+void read_file(FILE* input, ctr_t* container, list_t* commands) {
+    // jump to text seg
+    jump_to_text_seg(input);
+
+    map_t* symbols = &container->symbols;
+    map_t* externals = &container->externals;
+
+    ctr_addr addr = 0;
+    char line[READ_BUFFER_SIZE];
+    int external_index = 0;
+
+    while(!feof(input)) {
+        fgets(line, READ_BUFFER_SIZE, input);
+
+        char* colon = strchr(line, ':');
+        char* instruction = NULL;
+        if (colon == NULL) {
+            instruction = strtok(line, " \t\r\n");
+        } else {
+            instruction = strtok(colon+1, " \t\r\n"); 
+        }
+
+        if (colon != NULL) {
+            char* name = strtok(line, ": ");
+            // add symbol to map
+            map_set(symbols, name, &addr);
+        }
+
+        if (instruction) {
+            command_t command;
+            command.code = bc_asm2op(instruction);
+            list_init(&command.args, 50);
+            char* arg = strtok(NULL, " ,\t\r\n");
+            while (arg) {
+                char text[50];
+                memset(text, 0, 50);
+                strncpy(text, arg, 50);
+                list_add(&command.args, text);
+                arg = strtok(NULL, " ,\t\r\n");
+            }
+            if (command.code == BC_SYNCE || command.code == BC_ASYNCE) {
+                char* key = (char*)list_get(&command.args, 0);
+                if (!map_find_key(externals, key)) {
+                    map_set(externals, key, &external_index);
+                    external_index++;
+                }
+            }
+            list_add(commands, &command);
+            addr++;
+        }
+    }
+}
+
+void assembler(FILE* input, FILE* output) {
+    // read file
+    ctr_t container;
+    ctr_init(&container);
+    map_t* symbols = &container.symbols;
+    map_t* externals = &container.externals;
+    list_t* texts = &container.texts;
+
+    list_t commands;
+    list_init(&commands, sizeof(command_t));
+    read_file(input, &container, &commands);
+
+    // variables
+    map_t variables;
+    map_init(&variables, MAP_STR, sizeof(int));
+
+    for (unsigned int i = 0; i < commands.count; i++) {
+        command_t* command = list_get(&commands, i);
+        ctr_bytecode_t bc;
+        bc.instruction = command->code;
+        bc.argument = 0;
+
+        char* arg1 = list_get(&command->args, 0);
+        if (command->args.count > 0) {
+            switch (command->code) {
+                case BC_SYNC: {
+                    ctr_addr* addr = (int*)map_find_key(symbols, arg1);
+                    if (addr) {
+                        // maybe **addr
+                        bc.argument = *addr - i;
+                    } else {
+                        fprintf(stderr, "sync address not found %s\n", arg1); 
+                    }
+                    break;
+                }
+                case BC_SYNCE:
+                case BC_ASYNCE: { 
+                    int* index = map_find_key(externals, arg1);
+                    if (index) {
+                        bc.argument = *index;
+                    } else {
+                        fprintf(stderr, "(a)synce address not found %s\n", arg1); 
+                    }
+                    break;
+                }
+                case BC_ENTER: {
+                    for (unsigned int i = 0; i < command->args.count; i++) {
+                        arg1 = list_get(&command->args, i);
+                        bc.argument += 4;
+                        int variable_index = i;
+                        map_set(&variables, arg1, &variable_index);
+                    }
+                    break;
+                }
+                case BC_ARG: {
+                    ctr_addr* variable = map_find_key(&variables, arg1);
+                    if (variable) {
+                        bc.argument = *variable;
+                    } else {
+                        fprintf(stderr, "error could not find variable: %s\n", arg1);
+                    }
+                    break;
+                }
+                case BC_ARGV: {
+                    bc.argument = atoi(arg1);
+                    break;
+                }
+            }
+        }
+
+        list_add(texts, &bc);
+    }
+
+    // write container
+    ctr_write(output, &container);
+
+    // release
+    ctr_release(&container);
+    map_release(&variables);
+
+}
 
 void print_usage();
 
