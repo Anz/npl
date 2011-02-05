@@ -157,6 +157,12 @@ void print_text(ctr_t* container) {
 
         switch (bc->instruction) {
             case ASM_JMP:
+            case ASM_JE:
+            case ASM_JNE:
+            case ASM_JL:
+            case ASM_JLE:
+            case ASM_JG:
+            case ASM_JGE:
             case ASM_SYNC:
             case ASM_ASYNC: {
                 ctr_addr addr = i + bc->argument;
