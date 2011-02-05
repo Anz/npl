@@ -49,6 +49,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // init assembly table
+    asm_init();
+
     // load container
     ctr_t container = ctr_read(file);
     fclose(file);
@@ -83,6 +86,7 @@ int main(int argc, char* argv[]) {
 
     // release
     ctr_release(&container);
+    asm_release();
 
     return 0;
 }
@@ -149,11 +153,11 @@ void print_text(ctr_t* container) {
         printf("%02X ", char2int(int2char(bc->argument, 1)));
         printf("%02X ", char2int(int2char(bc->argument, 2)));
         printf("%02X\t", char2int(int2char(bc->argument, 3)));
-        printf("%s\t", bc_op2asm(bc->instruction));
+        printf("%s\t", asm_opcode2mnemonic(bc->instruction));
 
         switch (bc->instruction) {
-            case BC_SYNC:
-            case BC_ASYNC: {
+            case ASM_SYNC:
+            case ASM_ASYNC: {
                 ctr_addr addr = i + bc->argument;
                 char* symbol = (char*)map_find_value(symbols, &addr);
                 if (symbol) {
@@ -163,8 +167,8 @@ void print_text(ctr_t* container) {
                 }
                 break;
             }
-            case BC_SYNCE:
-            case BC_ASYNCE: {
+            case ASM_SYNCE:
+            case ASM_ASYNCE: {
                 int addr = bc->argument;
                 char* symbol = (char*)map_find_value(externals, &addr);
                 if (symbol) {
@@ -174,18 +178,18 @@ void print_text(ctr_t* container) {
                 }
                 break;
             }
-            case BC_ENTER: {
+            case ASM_ENTER: {
                 for (int i = 0; i < bc->argument / 4; i++) {
                     printf("%c, ", number2str(i));
                 }
                 printf("\n");
                 break;
             }
-            case BC_ARG: {
+            case ASM_ARG: {
                 printf("%c\n", number2str(bc->argument));
                 break;
             }
-            case BC_ARGV: {
+            case ASM_ARGV: {
                 printf("%i\n", bc->argument);
                 break;
             }

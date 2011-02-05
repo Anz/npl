@@ -54,23 +54,23 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
     for(unsigned int i = 0; i < texts->count; i++) {
         ctr_bytecode_t* bc = list_get(texts, i);
         switch(bc->instruction) {
-            case BC_ENTER: {
+            case ASM_ENTER: {
                 write1(X86_ENTER, native.text, &index);
                 write1(bc->argument, native.text, &index);
                 write1(0, native.text, &index);
                 write1(0, native.text, &index);
                 break;
             }
-            case BC_RET: {
+            case ASM_RET: {
                 write1(X86_LEAVE, native.text, &index);
                 write1(X86_RET, native.text, &index);
                 break;
             }
-            case BC_NOP: {
+            case ASM_NOP: {
                 write1(X86_NOP, native.text, &index);
                 break;
             }
-            case BC_ARG: {
+            case ASM_ARG: {
                 write1(0x55, native.text, &index); // push ebx
                 write1(0x83, native.text, &index); // sub (argument+1)*4, (%esp)
                 write1(0x2C, native.text, &index);
@@ -80,14 +80,14 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 argument_count++;
                 break;
             }
-            case BC_ARGV: {
+            case ASM_ARGV: {
                 write1(X86_PUSH_VALUE, native.text, &index);
                 write4(bc->argument, native.text, &index);
                 argument_count++;
                 break;
             }
-            case BC_SYNCE:
-            case BC_ASYNCE: {
+            case ASM_SYNCE:
+            case ASM_ASYNCE: {
                 char* symbol = map_find_value(externals, &bc->argument);
                 if (!symbol) {
                     fprintf(stderr, "external symbol not fount: %i\n", bc->argument);

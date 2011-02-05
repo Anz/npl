@@ -58,7 +58,7 @@ void read_file(FILE* input, ctr_t* container, list_t* commands) {
 
         if (instruction) {
             command_t command;
-            command.code = bc_asm2op(instruction);
+            command.code = asm_mnemonic2opcode(instruction);
             list_init(&command.args, 50);
             char* arg = strtok(NULL, " ,\t\r\n");
             while (arg) {
@@ -68,7 +68,7 @@ void read_file(FILE* input, ctr_t* container, list_t* commands) {
                 list_add(&command.args, text);
                 arg = strtok(NULL, " ,\t\r\n");
             }
-            if (command.code == BC_SYNCE || command.code == BC_ASYNCE) {
+            if (command.code == ASM_SYNCE || command.code == ASM_ASYNCE) {
                 char* key = (char*)list_get(&command.args, 0);
                 if (!map_find_key(externals, key)) {
                     map_set(externals, key, &external_index);
@@ -82,6 +82,9 @@ void read_file(FILE* input, ctr_t* container, list_t* commands) {
 }
 
 void assembler(FILE* input, FILE* output) {
+    // init assembly table
+    asm_init();
+
     // read file
     ctr_t container;
     ctr_init(&container);
@@ -106,7 +109,7 @@ void assembler(FILE* input, FILE* output) {
         char* arg1 = list_get(&command->args, 0);
         if (command->args.count > 0) {
             switch (command->code) {
-                case BC_SYNC: {
+                case ASM_SYNC: {
                     ctr_addr* addr = (int*)map_find_key(symbols, arg1);
                     if (addr) {
                         // maybe **addr
@@ -116,8 +119,8 @@ void assembler(FILE* input, FILE* output) {
                     }
                     break;
                 }
-                case BC_SYNCE:
-                case BC_ASYNCE: { 
+                case ASM_SYNCE:
+                case ASM_ASYNCE: { 
                     int* index = map_find_key(externals, arg1);
                     if (index) {
                         bc.argument = *index;
@@ -126,7 +129,7 @@ void assembler(FILE* input, FILE* output) {
                     }
                     break;
                 }
-                case BC_ENTER: {
+                case ASM_ENTER: {
                     for (unsigned int i = 0; i < command->args.count; i++) {
                         arg1 = list_get(&command->args, i);
                         bc.argument += 4;
@@ -135,7 +138,7 @@ void assembler(FILE* input, FILE* output) {
                     }
                     break;
                 }
-                case BC_ARG: {
+                case ASM_ARG: {
                     ctr_addr* variable = map_find_key(&variables, arg1);
                     if (variable) {
                         bc.argument = *variable;
@@ -144,7 +147,7 @@ void assembler(FILE* input, FILE* output) {
                     }
                     break;
                 }
-                case BC_ARGV: {
+                case ASM_ARGV: {
                     bc.argument = atoi(arg1);
                     break;
                 }
@@ -160,6 +163,7 @@ void assembler(FILE* input, FILE* output) {
     // release
     ctr_release(&container);
     map_release(&variables);
+    asm_release();
 
 }
 
