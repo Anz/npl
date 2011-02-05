@@ -109,6 +109,7 @@ void assembler(FILE* input, FILE* output) {
         char* arg1 = list_get(&command->args, 0);
         if (command->args.count > 0) {
             switch (command->code) {
+                case ASM_JMP:
                 case ASM_SYNC: {
                     ctr_addr* addr = (int*)map_find_key(symbols, arg1);
                     if (addr) {

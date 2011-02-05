@@ -8,6 +8,7 @@
 // x86 opcdoes
 #define X86_ENTER      0xC8
 #define X86_CALL       0xE8
+#define X86_JMP        0xE9
 #define X86_NOP        0x90
 #define X86_LEAVE      0xC9
 #define X86_RET        0xC3
@@ -47,7 +48,7 @@ static void* get_subroutine_addr(list_t* text, void* addr, int current,  int tar
             case ASM_SYNCE:  size += 8; break;
             case ASM_ASYNCE: size += 8; break;
             case ASM_CMP:    size += 1; break;
-            case ASM_JMP:    size += 1; break;
+            case ASM_JMP:    size += 5; break;
             case ASM_JE:     size += 1; break;
             case ASM_JNE:    size += 1; break;
             case ASM_JL:     size += 1; break;
@@ -156,8 +157,18 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 // reset argument count
                 argument_count = 0;
                 break;
-           }
-           default: {
+            }
+            case ASM_JMP: {
+                void* subroutine = get_subroutine_addr(texts, buffer, i, i + bc->argument); 
+                void* addr = (char*)call_addr(buffer, subroutine) - 1;
+                char* ptr = (char*)&addr;
+
+                // call <addr> (call function)
+                char sync[] = { X86_JMP, ptr[0], ptr[1], ptr[2], ptr[3] };
+                buffer = write(buffer, sync, sizeof(sync));
+                 break;     
+            }
+            default: {
                 char nop[] = { X86_NOP };
                 buffer = write(buffer, nop, sizeof(nop));
                 break;

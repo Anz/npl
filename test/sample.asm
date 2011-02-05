@@ -12,16 +12,18 @@ main:
             synce print
             synce print
             synce print
-            argv 32
+            argv 3
             arg var1
             synce integer
             argv 10
             arg var2
             synce integer
+loop:
             arg var1
             arg var2
             arg var1
-            synce integer_mul
+            synce integer_add
+            jmp loop
             sync min
             sync max
             ret

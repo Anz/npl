@@ -156,6 +156,7 @@ void print_text(ctr_t* container) {
         printf("%s\t", asm_opcode2mnemonic(bc->instruction));
 
         switch (bc->instruction) {
+            case ASM_JMP:
             case ASM_SYNC:
             case ASM_ASYNC: {
                 ctr_addr addr = i + bc->argument;

@@ -96,6 +96,7 @@ void print_arch_code(void* address, size_t seg_size) {
                 switch (text[i+j]) {
                     case (char)0x68:
                     case (char)0x55:
+                    case (char)0xE9:
                     case (char)0xE8: size = 5; break;
 
                     case (char)0xC8: size = 4; break;
