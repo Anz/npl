@@ -6,26 +6,25 @@
 #include "assembly.h"
 
 // x86 opcdoes
-#define X86_ENTER 0xC8
-#define X86_CALL 0xE8
-#define X86_NOP 0x90
-#define X86_LEAVE 0xC9
-#define X86_RET 0xC3
-#define X86_REGISTER 0x83
-#define X86_SUB_ESP 0xEC
-#define X86_ADD_ESP 0xC4
-#define X86_PUSH 0xFF
+#define X86_ENTER      0xC8
+#define X86_CALL       0xE8
+#define X86_NOP        0x90
+#define X86_LEAVE      0xC9
+#define X86_RET        0xC3
+#define X86_REGISTER   0x83
+#define X86_SUB_ESP    0xEC
+#define X86_ADD_ESP    0xC4
+#define X86_PUSH       0xFF
 #define X86_PUSH_VALUE 0x68
 
-void* call_addr(void* source, void* target) {
+static void* call_addr(void* source, void* target) {
     if (source > target) {
-        return (void*)0xFFFFFFFF - (source - target);
-    } else {
-        return (void*)(target - source);
+        return (void*)0xFFFFFFFF - 4 + (target - source);
     }
+    return (void*)(target - source) - 4;
 }
 
-void* get_subroutine_addr(list_t* text, void* addr, int current,  int target) {
+static void* get_subroutine_addr(list_t* text, void* addr, int current,  int target) {
     size_t size = 0;
     int incrementor;
     if (current < target) {
@@ -124,7 +123,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
             case ASM_SYNC:
             case ASM_ASYNC: {
                 void* subroutine = get_subroutine_addr(texts, buffer, i, i + bc->argument); 
-                void* addr = (char*)call_addr(buffer + 4, subroutine);
+                void* addr = (char*)call_addr(buffer, subroutine);
                 char* ptr = (char*)&addr;
 
                 // call <addr> (call function)
@@ -145,7 +144,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                     continue;
                 }
                 
-                void* addr = call_addr(buffer + 4, function);
+                void* addr = call_addr(buffer, function);
                 char* ptr = (char*)&addr;
                 char size = 4 * argument_count;
                 
