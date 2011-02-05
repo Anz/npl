@@ -62,14 +62,9 @@ void* get_subroutine_addr(list_t* text, void* addr, int current,  int target) {
     return addr + incrementor * (size + 1);
 }
 
-void write1(char data, char* buffer, long* index) {
-    buffer[*index] = data;
-    *index += 1;
-}
-
-void write4(unsigned int data, char* buffer, long* index) {
-    memcpy(&buffer[*index], &data, 4);
-    *index += 4; 
+static char* write(char* buffer, void* data, size_t size) {
+    memcpy(buffer, data, size);
+    return buffer + size;
 }
 
 arch_native_t arch_compile(ctr_t* container,  library_t* library) {
@@ -84,51 +79,57 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
     native.text_size = header->text_size / CTR_BYTECODE_SIZE * 5 + header->symbol_size / CTR_SYMBOL_SIZE * 8;
     native.text = malloc(native.text_size);
 
-    long index = 0;
     int argument_count = 0;
+    char* buffer = native.text;
 
     // compile to x86 code
     for(unsigned int i = 0; i < texts->count; i++) {
         ctr_bytecode_t* bc = list_get(texts, i);
         switch(bc->instruction) {
             case ASM_ENTER: {
-                write1(X86_ENTER, native.text, &index);
-                write1(bc->argument, native.text, &index);
-                write1(0, native.text, &index);
-                write1(0, native.text, &index);
+                char enter[] = { X86_ENTER, (char)bc->argument, 0, 0 };
+                // enter <bc->argument, $0 (alloc space on stack for local vars)
+                buffer = write(buffer, enter, sizeof(enter));
                 break;
             }
             case ASM_RET: {
-                write1(X86_LEAVE, native.text, &index);
-                write1(X86_RET, native.text, &index);
+                char ret[] = { X86_LEAVE, X86_RET };
+                // leave (clean up stack)
+                // ret (return)
+                buffer = write(buffer, ret, sizeof(ret));
                 break;
             }
             case ASM_NOP: {
-                write1(X86_NOP, native.text, &index);
+                char nop[] = { X86_NOP };
+                // not a operation
+                buffer = write(buffer, nop, sizeof(nop));
                 break;
             }
             case ASM_ARG: {
-                write1(0x55, native.text, &index); // push ebx
-                write1(0x83, native.text, &index); // sub (argument+1)*4, (%esp)
-                write1(0x2C, native.text, &index);
-                write1(0x24, native.text, &index);
                 char size = (char)((bc->argument + 1) * 4);
-                write1(size, native.text, &index);
+                char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
+                //  push value from stack
+                buffer = write(buffer, arg, sizeof(arg));
                 argument_count++;
                 break;
             }
             case ASM_ARGV: {
-                write1(X86_PUSH_VALUE, native.text, &index);
-                write4(bc->argument, native.text, &index);
+                char* ptr = (char*)&bc->argument;
+                // push <bc->argument>
+                char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
+                buffer = write(buffer, argv, sizeof(argv));
                 argument_count++;
                 break;
             }
             case ASM_SYNC:
             case ASM_ASYNC: {
-                void* subroutine = get_subroutine_addr(texts, native.text+index, i, i + bc->argument); 
-                write1(X86_CALL, native.text, &index);
-                void* addr = call_addr(native.text + index + 3, subroutine);
-                write4((unsigned int)addr, native.text, &index);
+                void* subroutine = get_subroutine_addr(texts, buffer, i, i + bc->argument); 
+                void* addr = (char*)call_addr(buffer + 4, subroutine);
+                char* ptr = (char*)&addr;
+
+                // call <addr> (call function)
+                char sync[] = { X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3] };
+                buffer = write(buffer, sync, sizeof(sync));
               break;
             }
             case ASM_SYNCE:
@@ -143,28 +144,30 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                     fprintf(stderr, "undefined reference to extneral symbol '%s'\n", symbol);
                     continue;
                 }
-                write1(X86_CALL, native.text, &index);
-                void* addr = call_addr(native.text + index + 3, function);
-                write4((unsigned int)addr, native.text, &index);
+                
+                void* addr = call_addr(buffer + 4, function);
+                char* ptr = (char*)&addr;
+                char size = 4 * argument_count;
+                
+                // call <addr> (call function)
+                // add esp, <size> (remove args from stack)
+                char synce[] = { X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3], X86_REGISTER, X86_ADD_ESP, size };
+                buffer = write(buffer, synce, sizeof(synce));
 
-                // reset stack pointer
-                //if (argument_count > 0) {
-                    write1(X86_REGISTER, native.text, &index);
-                    write1(X86_ADD_ESP, native.text, &index);
-                    write1(4 * argument_count, native.text, &index);
-                    argument_count = 0;
-                //}
+                // reset argument count
+                argument_count = 0;
                 break;
            }
            default: {
-                write1(X86_NOP, native.text, &index);
+                char nop[] = { X86_NOP };
+                buffer = write(buffer, nop, sizeof(nop));
                 break;
             }
         }
     }
 
     // release unused memory
-    native.text_size = index;
+    native.text_size = (void*)buffer - native.text;
     native.text = realloc(native.text, native.text_size);
     native.main = native.text;
 
