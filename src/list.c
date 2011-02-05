@@ -51,6 +51,22 @@ void* list_get(list_t* list, unsigned int index) {
     return NULL;
 }
 
+int list_pop(list_t* list, void* data) {
+    if (list->count == 0) {
+        return 0;
+    }
+    list_item_t* first = list->first;
+    memcpy(data, first->data, list->data_size);
+    list->count--;
+
+    list_item_t* previous = first->previous;
+    list_item_t* next = first->next;
+    previous->next = next;
+    next->previous = previous;
+    free(first);
+    return list->count + 1;
+}
+
 void list_release(list_t* list) {
     // delete all items
     list_item_t* item = list->first;

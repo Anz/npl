@@ -5,7 +5,7 @@
 #include "library.h"
 
 typedef struct arch_native {
-    void (*main)();
+    void (*main)(int, void**);
     void* text;
     size_t text_size;
     void* data;

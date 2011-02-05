@@ -3,7 +3,6 @@
 #include <pthread.h>
 #include "container.h"
 #include "arch.h"
-#include "job.h"
 #include "thread.h"
 #include "map.h"
 #include "library.h"
@@ -50,33 +49,22 @@ int main(int argc, char* argv[]) {
     print_arch_code(native.main, native.text_size);
 
     // create main job
-    job_t main_job;
-    main_job.func = native.main;
-    main_job.args = NULL;
-    main_job.size = 0;
-
-    // init
-    job_list_t jobs;
-    job_list_init(&jobs);
-    /*for (int i = 0; i < 1; i++) {
-        job_list_push(&jobs, main_job);
-     }
+    threads_init();
+    threads_push(native.main, 0, NULL);
 
     thread_t threads[thread_count];
 
     // create threads
     for (int i = 0; i < thread_count; i++) {
-        thread_init(&threads[i], &jobs);
+        thread_init(&threads[i]);
     }
     // wait for threads
     for (int i = 0; i < thread_count; i++) {
         thread_join(&threads[i]);
-    }*/
-    native.main();
-    
+    }
 
     // releasep
-    job_list_release(&jobs);
+    threads_release();
     free(native.text);
     library_release(&library);
 

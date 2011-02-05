@@ -18,13 +18,13 @@ main:
             argv 10
             arg var2
             synce integer
-loop:
             arg var1
             arg var2
             arg var1
             synce integer_add
-            jmp loop
+#            jmp skip
             sync min
+skip:
             sync max
             ret
 
