@@ -28,6 +28,7 @@ main:
 
 min:
             enter a, b
+            synce print
             cmp a, b
             jle min_ret_a
             jg min_ret_b
@@ -36,6 +37,7 @@ min_ret_b:  ret b
 
 max:
             enter a, b
+            synce print
             cmp a, b
             jle min_ret_a
             jg min_ret_b

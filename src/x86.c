@@ -25,6 +25,43 @@ void* call_addr(void* source, void* target) {
     }
 }
 
+void* get_subroutine_addr(list_t* text, void* addr, int current,  int target) {
+    size_t size = 0;
+    int incrementor;
+    if (current < target) {
+        incrementor = 1;
+        target--;
+    } else {
+        incrementor = -1;
+        current--;
+        size = 3;
+    }
+    for (int i = current; i != target; i += incrementor) {
+        ctr_bytecode_t* bc = list_get(text, i);
+        switch(bc->instruction) {
+            case ASM_NOP:    size += 1; break;
+            case ASM_ENTER:  size += 4; break;
+            case ASM_ARG:    size += 5; break;
+            case ASM_ARGV:   size += 5; break;
+            case ASM_SYNC:   size += 5; break;
+            case ASM_ASYNC:  size += 5; break;
+            case ASM_SYNCE:  size += 8; break;
+            case ASM_ASYNCE: size += 8; break;
+            case ASM_CMP:    size += 1; break;
+            case ASM_JMP:    size += 1; break;
+            case ASM_JE:     size += 1; break;
+            case ASM_JNE:    size += 1; break;
+            case ASM_JL:     size += 1; break;
+            case ASM_JLE:    size += 1; break;
+            case ASM_JG:     size += 1; break;
+            case ASM_JGE:    size += 1; break;
+            case ASM_RET:    size += 2; break;
+            default: size += 1; break;
+        }
+    }
+    return addr + incrementor * (size + 1);
+}
+
 void write1(char data, char* buffer, long* index) {
     buffer[*index] = data;
     *index += 1;
@@ -86,6 +123,14 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 argument_count++;
                 break;
             }
+            case ASM_SYNC:
+            case ASM_ASYNC: {
+                void* subroutine = get_subroutine_addr(texts, native.text+index, i, i + bc->argument); 
+                write1(X86_CALL, native.text, &index);
+                void* addr = call_addr(native.text + index + 3, subroutine);
+                write4((unsigned int)addr, native.text, &index);
+              break;
+            }
             case ASM_SYNCE:
             case ASM_ASYNCE: {
                 char* symbol = map_find_value(externals, &bc->argument);
@@ -103,12 +148,12 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 write4((unsigned int)addr, native.text, &index);
 
                 // reset stack pointer
-                if (argument_count > 0) {
+                //if (argument_count > 0) {
                     write1(X86_REGISTER, native.text, &index);
                     write1(X86_ADD_ESP, native.text, &index);
                     write1(4 * argument_count, native.text, &index);
                     argument_count = 0;
-                }
+                //}
                 break;
            }
            default: {
