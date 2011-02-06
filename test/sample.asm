@@ -4,6 +4,9 @@ main:
             synce print
             synce print
             synce print
+            argv 4
+            arg string
+            synce list_init
             argv 3
             arg var1
             synce integer

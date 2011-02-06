@@ -106,7 +106,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 break;
             }
             case ASM_ARG: {
-                char size = (char)((bc->argument + 1) * 4);
+                char size = (char)bc->argument + 4;//(char)((bc->argument + 1) * 4);
                 char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
                 //  push value from stack
                 buffer = write(buffer, arg, sizeof(arg));

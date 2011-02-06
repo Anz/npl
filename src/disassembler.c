@@ -138,6 +138,11 @@ void print_text(ctr_t* container) {
     list_t* texts = &container->texts;
     map_t* symbols = &container->symbols;
     map_t* externals = &container->externals;
+
+    map_t variables;
+    map_init(&variables, sizeof(char), sizeof(int));
+    int variable_index = 0;
+
     for(unsigned int i = 0; i < texts->count; i++) {
         ctr_bytecode_t* bc = list_get(texts, i);
 
@@ -186,14 +191,24 @@ void print_text(ctr_t* container) {
                 break;
             }
             case ASM_ENTER: {
-                for (int i = 0; i < bc->argument / 4; i++) {
+                /*for (int i = 0; i < bc->argument / 4; i++) {
                     printf("%c, ", number2str(i));
-                }
-                printf("\n");
+                }*/
+                variable_index = 0;
+                map_release(&variables);
+                map_init(&variables, sizeof(char), sizeof(int));
+                printf("%i bytes\n", bc->argument);
                 break;
             }
             case ASM_ARG: {
-                printf("%c\n", number2str(bc->argument));
+                char* variable = map_find_value(&variables, &bc->argument);
+                if (!variable) {
+                    char c = number2str(variable_index);
+                    variable_index++;
+                    map_set(&variables, &c, &bc->argument);
+                    variable = map_find_value(&variables, &bc->argument);
+                }
+                printf("%c\n", *variable);
                 break;
             }
             case ASM_ARGV: {

@@ -3,7 +3,7 @@ include Makefile.common
 LIB_SRC = util.c list.c map.c container.c
 NAS_SRC = ${LIB_SRC} assembly.c assembler.c
 NIS_SRC = ${LIB_SRC} assembly.c disassembler.c
-NVM_SRC = ${LIB_SRC} library.c x86.c thread.c integer.c vm.c
+NVM_SRC = ${LIB_SRC} library.c x86.c thread.c integer.c vm.c lib/array.c
 
 NAS = ${NAS_SRC:%.c=bin/%.o}
 NIS = ${NIS_SRC:%.c=bin/%.o}
@@ -11,8 +11,11 @@ NVM = ${NVM_SRC:%.c=bin/%.o}
 
 all: bin bin/nas bin/nis bin/nvm
 
-bin:
+bin: bin/lib
 	mkdir -p bin
+
+bin/lib:
+	mkdir -p bin/lib
 
 bin/nas: ${NAS}
 	${CC} ${CFLAGS} -obin/nas ${NAS}
@@ -24,6 +27,9 @@ bin/nvm: ${NVM}
 	${CC} ${CFLAGS} -obin/nvm ${NVM} -lpthread
 
 bin/%.o: src/%.c
+	${CC} ${CFLAGS} -o${<:src/%.c=bin/%.o} -c $<
+
+bin/lib/%.o: src/lib/%.c
 	${CC} ${CFLAGS} -o${<:src/%.c=bin/%.o} -c $<
 
 clean:

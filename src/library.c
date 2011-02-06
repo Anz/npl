@@ -1,5 +1,6 @@
 #include "library.h"
 #include "integer.h"
+#include "lib/array.h"
 
 void library_init(library_t* library) {
     map_init(library, MAP_STR, sizeof(int));
@@ -10,6 +11,11 @@ void library_init(library_t* library) {
     library_add(library, "integer_sub", &integer_sub);
     library_add(library, "integer_mul", &integer_mul);
     library_add(library, "integer_div", &integer_div);
+
+    // array functions
+    library_add(library, "list_init", &array_init);
+    library_add(library, "list_release", &array_release);
+    library_add(library, "list_add", &array_add);
 }
 
 void library_release(library_t* library) {

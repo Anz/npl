@@ -97,7 +97,7 @@ void assembler(FILE* input, FILE* output) {
     map_t types;
     map_init(&types, MAP_STR, sizeof(int));
     int integer = 4;
-    int list = 8;
+    int list = 12;
     map_set(&types, "integer", &integer);
     map_set(&types, "list", &list);
     map_set(&types, "string", &list);
