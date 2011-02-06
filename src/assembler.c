@@ -19,19 +19,8 @@ typedef struct command {
     list_t args;
 } command_t;
 
-void jump_to_text_seg(FILE* file) {
-    fseek(file, 0, SEEK_SET);
-    char line[READ_BUFFER_SIZE];
-    memset(line, 0, READ_BUFFER_SIZE);
-    while(!feof(file) && memcmp(line, ".text", 5) != 0)  {
-        fgets(line, READ_BUFFER_SIZE, file);
-    }
-}
-
 void read_file(FILE* input, ctr_t* container, list_t* commands) {
-    // jump to text seg
-    jump_to_text_seg(input);
-
+    fseek(input, 0, SEEK_CUR);
     map_t* symbols = &container->symbols;
     map_t* externals = &container->externals;
 
@@ -41,6 +30,10 @@ void read_file(FILE* input, ctr_t* container, list_t* commands) {
 
     while(!feof(input)) {
         fgets(line, READ_BUFFER_SIZE, input);
+
+        if (line[0] == '#') {
+            continue;
+        }
 
         char* colon = strchr(line, ':');
         char* instruction = NULL;
@@ -100,6 +93,15 @@ void assembler(FILE* input, FILE* output) {
     map_t variables;
     map_init(&variables, MAP_STR, sizeof(int));
 
+    // types
+    map_t types;
+    map_init(&types, MAP_STR, sizeof(int));
+    int integer = 4;
+    int list = 8;
+    map_set(&types, "integer", &integer);
+    map_set(&types, "list", &list);
+    map_set(&types, "string", &list);
+
     for (unsigned int i = 0; i < commands.count; i++) {
         command_t* command = list_get(&commands, i);
         ctr_bytecode_t bc;
@@ -137,11 +139,16 @@ void assembler(FILE* input, FILE* output) {
                     break;
                 }
                 case ASM_ENTER: {
-                    for (unsigned int i = 0; i < command->args.count; i++) {
-                        arg1 = list_get(&command->args, i);
-                        bc.argument += 4;
-                        int variable_index = i;
-                        map_set(&variables, arg1, &variable_index);
+                    for (unsigned int i = 0; i + 1 < command->args.count; i += 2) {
+                        char* type = list_get(&command->args, i);
+                        char* name = list_get(&command->args, i+1);
+                        int* type_size = map_find_key(&types, type);
+                        if (!type_size) {
+                            fprintf(stderr, "error could not find type: %s\n", type);
+                            continue;
+                        }
+                        map_set(&variables, name, &bc.argument);
+                        bc.argument += *type_size;
                     }
                     break;
                 }
@@ -171,6 +178,7 @@ void assembler(FILE* input, FILE* output) {
     ctr_release(&container);
     map_release(&variables);
     asm_release();
+    map_release(&types);
 
 }
 

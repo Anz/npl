@@ -1,14 +1,6 @@
 # comment
-.symbol
-    main
-    min
-    max
-
-.data
-
-.text
 main:
-            enter var1, var2
+            enter integer var1, integer var2, list string
             synce print
             synce print
             synce print
@@ -29,7 +21,7 @@ skip:
             ret
 
 min:
-            enter a, b
+            enter integer a, integer b
             synce print
             cmp a, b
             jle min_ret_a
@@ -38,7 +30,7 @@ min_ret_a:  ret a
 min_ret_b:  ret b
 
 max:
-            enter a, b
+            enter integer a, integer b
             synce print
             cmp a, b
             jle min_ret_a

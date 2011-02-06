@@ -1,12 +1,6 @@
 # comment
-.symbol
-    main
-
-.data
-
-.text
 main:
-            enter skalar1, skalar2, summe, produkt
+            enter integer skalar1, integer skalar2, integer summe, integer produkt
             argv 100
             arg skalar1
             synce integer
