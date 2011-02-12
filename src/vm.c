@@ -6,6 +6,8 @@
 #include "thread.h"
 #include "map.h"
 #include "lib/library.h"
+#include <stdbool.h>
+#include <string.h>
 
 void print_arch_code(void* address, size_t seg_size);
 
@@ -23,12 +25,20 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    char* path;
+    bool show_native_code = false;
     int thread_count = 1;
-    if (argc > 2) {
-        thread_count = atoi(argv[1]);
+    char* path = argv[argc-1];
+
+    for (int i = 1; i < argc - 1; i++) {
+        char* arg = argv[i];
+        if (arg[0] != '-' || strlen(arg) < 2) {
+            printf("usage: %s <module>\n", argv[0]);
+        }
+        switch (arg[1]) {
+            case 's': show_native_code = true; break;
+            case 't': thread_count = atoi(arg+2); break;
+        }
     }
-    path = argv[argc-1];
 
     // open module
     FILE* module = fopen(path, "rb");
@@ -46,7 +56,11 @@ int main(int argc, char* argv[]) {
     library_init(&library);
     library_add(&library, "print", &print_wtf);
     arch_native_t native = arch_compile(&container, &library);
-    print_arch_code(native.main, native.text_size);
+
+    // print native code
+    if (show_native_code) {
+        print_arch_code(native.main, native.text_size);
+    }
 
     // create main job
     threads_init();
