@@ -5,7 +5,7 @@
 #include "arch.h"
 #include "thread.h"
 #include "map.h"
-#include "library.h"
+#include "lib/library.h"
 
 void print_arch_code(void* address, size_t seg_size);
 

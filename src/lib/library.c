@@ -1,6 +1,7 @@
-#include "library.h"
-#include "integer.h"
+#include "lib/library.h"
+#include "lib/integer.h"
 #include "lib/array.h"
+#include "lib/stdout.h"
 
 void library_init(library_t* library) {
     map_init(library, MAP_STR, sizeof(int));
@@ -16,6 +17,9 @@ void library_init(library_t* library) {
     library_add(library, "list_init", &array_init);
     library_add(library, "list_release", &array_release);
     library_add(library, "list_add", &array_add);
+
+    // stdout functions
+    library_add(library, "print2", &print);
 }
 
 void library_release(library_t* library) {

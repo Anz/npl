@@ -2,7 +2,7 @@
 #define ARCH_H
 
 #include "container.h"
-#include "library.h"
+#include "lib/library.h"
 
 typedef struct arch_native {
     void (*main)(int, void**);

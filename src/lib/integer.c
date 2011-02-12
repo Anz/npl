@@ -1,5 +1,5 @@
-#include "integer.h"
-#include "stdio.h"
+#include <stdio.h>
+#include "lib/integer.h"
 
 void integer(int* i, int value) {
     printf("integer set %p from %i to ", i, *i);

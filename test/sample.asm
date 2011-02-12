@@ -7,7 +7,7 @@ main:
             argv 4
             arg string
             synce list_init
-            argv 3
+            argv 97
             arg var1
             synce integer
             arg var1
@@ -20,6 +20,8 @@ main:
             arg var2
             arg var1
             synce integer_add
+            arg string
+            synce print2
             arg string
             synce list_release
 #            jmp skip
