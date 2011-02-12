@@ -10,6 +10,9 @@ main:
             argv 3
             arg var1
             synce integer
+            arg var1
+            arg string
+            synce list_add
             argv 10
             arg var2
             synce integer
@@ -17,6 +20,8 @@ main:
             arg var2
             arg var1
             synce integer_add
+            arg string
+            synce list_release
 #            jmp skip
             sync min
 skip:

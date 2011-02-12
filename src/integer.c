@@ -2,7 +2,7 @@
 #include "stdio.h"
 
 void integer(int* i, int value) {
-    printf("integer set %08X from %i to ", (int)i, *i);
+    printf("integer set %p from %i to ", i, *i);
     *i = value;
     printf("%i\n", *i);
 }

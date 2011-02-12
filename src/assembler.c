@@ -147,8 +147,8 @@ void assembler(FILE* input, FILE* output) {
                             fprintf(stderr, "error could not find type: %s\n", type);
                             continue;
                         }
-                        map_set(&variables, name, &bc.argument);
                         bc.argument += *type_size;
+                        map_set(&variables, name, &bc.argument);
                     }
                     break;
                 }
