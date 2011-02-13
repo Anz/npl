@@ -162,10 +162,27 @@ void assembler(FILE* input, FILE* output) {
                     break;
                 }
                 case ASM_ARGV: {
-                    if (arg1[0] == '\'') { // if character
-                        bc.argument = arg1[1];
-                    } else { // if number
-                        bc.argument = atoi(arg1);
+                    switch (arg1[0]) {
+                        case '\'': 
+                            bc.argument = arg1[1];
+                            break;
+                        case '"': {
+                            int length;
+                            for (length = 0; arg1[length+1] != '"'; length++);
+                            length--;
+                            for (int i = length; i > 0; i--) {
+                                ctr_bytecode_t argv;
+                                argv.instruction = ASM_ARGV;
+                                argv.argument = arg1[i];
+                                list_add(texts, &argv);
+                            }
+                            bc.argument = length;
+
+                            break;
+                        }
+                        default: 
+                            bc.argument = atoi(arg1);
+                            break;
                     }
                     break;
                 }

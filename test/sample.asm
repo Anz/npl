@@ -49,19 +49,7 @@ max_ret_b:  ret b
 
 print_hello_world:
             enter string str
-            argv '!'
-            argv 'd'
-            argv 'l'
-            argv 'r'
-            argv 'o'
-            argv 'W'
-            argv '_'
-            argv 'o'
-            argv 'l'
-            argv 'l'
-            argv 'e'
-            argv 'H'
-            argv 12
+            argv "hello_world_xD"
             arg str
             synce string_init
             arg str
