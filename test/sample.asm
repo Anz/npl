@@ -48,10 +48,7 @@ max_ret_a:  ret a
 max_ret_b:  ret b
 
 print_hello_world:
-            enter list string
-            argv 4
-            arg string
-            synce list_init
+            enter string str
             argv '!'
             argv 'd'
             argv 'l'
@@ -65,11 +62,11 @@ print_hello_world:
             argv 'e'
             argv 'H'
             argv 12
-            arg string
+            arg str
             synce string_init
-            arg string
+            arg str
             synce print
-            arg string
-            synce list_release
+            arg str
+            synce string_release
             ret
 

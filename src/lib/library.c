@@ -24,6 +24,7 @@ void library_init(library_t* library) {
 
     // string functions
     library_add(library, "string_init", &string_init);
+    library_add(library, "string_release", &array_release);
 }
 
 void library_release(library_t* library) {

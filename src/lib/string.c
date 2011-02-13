@@ -1,9 +1,10 @@
 #include "lib/string.h"
 #include "lib/array.h"
-#include <stdio.h>
 #include <stdarg.h>
 
 void string_init(void* array, int num, ...) {
+    array_init(array, 4);
+
     va_list arguments;
 
     va_start(arguments, num);
