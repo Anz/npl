@@ -162,7 +162,11 @@ void assembler(FILE* input, FILE* output) {
                     break;
                 }
                 case ASM_ARGV: {
-                    bc.argument = atoi(arg1);
+                    if (arg1[0] == '\'') { // if character
+                        bc.argument = arg1[1];
+                    } else { // if number
+                        bc.argument = atoi(arg1);
+                    }
                     break;
                 }
             }

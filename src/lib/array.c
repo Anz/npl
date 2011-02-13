@@ -4,13 +4,9 @@
 #include <stdio.h>
 
 static void print_array(void* array, char* text) {
-    int32_t* data = array;
+/*    int32_t* data = array;
     printf("array %s (%p): (%p) with %i elements by a size of %i\n", text, array, (void*)data[0], data[1], data[2]);
-    int32_t* values = (int32_t*)data[0];
-    for (int i = 0; i < data[1]; i++) {
-        int32_t value = values[i];
-        printf("\telement: %i\n", value);
-    }
+    int32_t* values = (int32_t*)data[0];*/
 }
 
 

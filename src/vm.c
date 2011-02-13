@@ -54,7 +54,6 @@ int main(int argc, char* argv[]) {
     // compile bytecode
     library_t library;
     library_init(&library);
-    library_add(&library, "print", &print_wtf);
     arch_native_t native = arch_compile(&container, &library);
 
     // print native code

@@ -2,6 +2,7 @@
 #include "lib/integer.h"
 #include "lib/array.h"
 #include "lib/stdout.h"
+#include "lib/string.h"
 
 void library_init(library_t* library) {
     map_init(library, MAP_STR, sizeof(int));
@@ -19,7 +20,10 @@ void library_init(library_t* library) {
     library_add(library, "list_add", &array_add);
 
     // stdout functions
-    library_add(library, "print2", &print);
+    library_add(library, "print", &print);
+
+    // string functions
+    library_add(library, "string_init", &string_init);
 }
 
 void library_release(library_t* library) {
