@@ -1,6 +1,6 @@
 #ifndef LIB_STDOUT
 #define LIB_STDOUT
 
-void print(void* array);
+void print(int num, ...);
 
 #endif

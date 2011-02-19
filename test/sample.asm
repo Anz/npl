@@ -1,6 +1,6 @@
 # comment
 main:
-            enter integer var1, integer var2, list string
+            enter integer var1, integer var2, list string, string var1str
             sync print_hello_world
             sync print_hello_world
             sync print_hello_world
@@ -18,11 +18,15 @@ main:
             arg var2
             arg var1
             synce integer_add
-#            arg string
-#            synce print2
+            arg var1
+            arg var1str
+            synce decimal_to_string
+            arg var1str
+            arg var1str
+            argv 2
+            synce print
             arg string
             synce list_release
-#            jmp skip
             sync min
 skip:
             sync max
@@ -53,6 +57,7 @@ print_hello_world:
             arg str
             synce string_init
             arg str
+            argv 1
             synce print
             arg str
             synce string_release

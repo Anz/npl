@@ -3,6 +3,7 @@
 #include "lib/array.h"
 #include "lib/stdout.h"
 #include "lib/string.h"
+#include "lib/conversion.h"
 
 void library_init(library_t* library) {
     map_init(library, MAP_STR, sizeof(int));
@@ -25,6 +26,9 @@ void library_init(library_t* library) {
     // string functions
     library_add(library, "string_init", &string_init);
     library_add(library, "string_release", &array_release);
+
+    // conversion functions
+    library_add(library, "decimal_to_string", &decimal_to_string);
 }
 
 void library_release(library_t* library) {

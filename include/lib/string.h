@@ -1,8 +1,10 @@
 #ifndef LIB_STRING
 #define LIB_STRING
 
-#include <stdint.h>
+#include "lib/array.h"
 
-void string_init(void* array, int num, ...);
+typedef lib_array lib_string;
+
+void string_init(lib_string array, int num, ...);
 
 #endif
