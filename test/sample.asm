@@ -1,40 +1,40 @@
 # comment
 main:
             enter integer var1, integer var2, list string, string var1str
-            sync print_hello_world
-            sync print_hello_world
-            sync print_hello_world
+            call print_hello_world
+            call print_hello_world
+            call print_hello_world
             argv 4
             arg string
-            synce list_init
+            calle list_init
             argv 'b'
             arg var1
-            synce integer
-            sync print_hello_world
+            calle integer
+            call print_hello_world
             argv 10
             arg var2
-            synce integer
+            calle integer
             arg var1
             arg var2
             arg var1
-            synce integer_add
+            calle integer_add
             arg var1
             arg var1str
-            synce decimal_to_string
+            calle decimal_to_string
             arg var1str
             arg var1str
             argv 2
-            synce print
+            calle print
             arg string
-            synce list_release
-            sync min
+            calle list_release
+            call min
 skip:
-            sync max
+            call max
             ret
 
 min:
             enter integer a, integer b
-            sync print_hello_world
+            call print_hello_world
             cmp a, b
             jle min_ret_a
             jg min_ret_b
@@ -43,11 +43,11 @@ min_ret_b:  ret b
 
 max:
             enter integer a, integer b
-            sync print_hello_world
+            call print_hello_world
             cmp a, b
             jle min_ret_a
             jg min_ret_b
-            sync min
+            call min
 max_ret_a:  ret a
 max_ret_b:  ret b
 
@@ -55,11 +55,11 @@ print_hello_world:
             enter string str
             argv "hello_world_xD"
             arg str
-            synce string_init
+            calle string_init
             arg str
             argv 1
-            synce print
+            calle print
             arg str
-            synce string_release
+            calle string_release
             ret
 

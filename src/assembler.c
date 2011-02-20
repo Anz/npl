@@ -61,7 +61,7 @@ void read_file(FILE* input, ctr_t* container, list_t* commands) {
                 list_add(&command.args, text);
                 arg = strtok(NULL, " ,\t\r\n");
             }
-            if (command.code == ASM_SYNCE || command.code == ASM_ASYNCE) {
+            if (command.code == ASM_CALLE) {
                 char* key = (char*)list_get(&command.args, 0);
                 if (!map_find_key(externals, key)) {
                     map_set(externals, key, &external_index);
@@ -118,7 +118,7 @@ void assembler(FILE* input, FILE* output) {
                 case ASM_JLE:
                 case ASM_JG:
                 case ASM_JGE:
-                case ASM_SYNC: {
+                case ASM_CALL: {
                     ctr_addr* addr = (int*)map_find_key(symbols, arg1);
                     if (addr) {
                         // maybe **addr
@@ -128,8 +128,7 @@ void assembler(FILE* input, FILE* output) {
                     }
                     break;
                 }
-                case ASM_SYNCE:
-                case ASM_ASYNCE: { 
+                case ASM_CALLE: { 
                     int* index = map_find_key(externals, arg1);
                     if (index) {
                         bc.argument = *index;

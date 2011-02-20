@@ -168,8 +168,7 @@ void print_text(ctr_t* container) {
             case ASM_JLE:
             case ASM_JG:
             case ASM_JGE:
-            case ASM_SYNC:
-            case ASM_ASYNC: {
+            case ASM_CALL: {
                 ctr_addr addr = i + bc->argument;
                 char* symbol = (char*)map_find_value(symbols, &addr);
                 if (symbol) {
@@ -179,8 +178,7 @@ void print_text(ctr_t* container) {
                 }
                 break;
             }
-            case ASM_SYNCE:
-            case ASM_ASYNCE: {
+            case ASM_CALLE: {
                 int addr = bc->argument;
                 char* symbol = (char*)map_find_value(externals, &addr);
                 if (symbol) {

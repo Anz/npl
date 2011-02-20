@@ -43,10 +43,8 @@ static void* get_subroutine_addr(list_t* text, void* addr, int current,  int tar
             case ASM_ENTER:  size += 4; break;
             case ASM_ARG:    size += 5; break;
             case ASM_ARGV:   size += 5; break;
-            case ASM_SYNC:   size += 5; break;
-            case ASM_ASYNC:  size += 5; break;
-            case ASM_SYNCE:  size += 8; break;
-            case ASM_ASYNCE: size += 8; break;
+            case ASM_CALL:   size += 5; break;
+            case ASM_CALLE:  size += 8; break;
             case ASM_CMP:    size += 1; break;
             case ASM_JMP:    size += 5; break;
             case ASM_JE:     size += 1; break;
@@ -121,8 +119,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 argument_count++;
                 break;
             }
-            case ASM_SYNC:
-            case ASM_ASYNC: {
+            case ASM_CALL: {
                 void* subroutine = get_subroutine_addr(texts, buffer, i, i + bc->argument); 
                 void* addr = (char*)call_addr(buffer, subroutine);
                 char* ptr = (char*)&addr;
@@ -132,8 +129,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 buffer = write(buffer, sync, sizeof(sync));
               break;
             }
-            case ASM_SYNCE:
-            case ASM_ASYNCE: {
+            case ASM_CALLE: {
                 char* symbol = map_find_value(externals, &bc->argument);
                 if (!symbol) {
                     fprintf(stderr, "external symbol not fount: %i\n", bc->argument);
