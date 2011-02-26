@@ -1,6 +1,7 @@
 #include "arch.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include "util.h"
 #include "assembly.h"
@@ -60,9 +61,14 @@ static void* get_subroutine_addr(list_t* text, void* addr, int current,  int tar
     return addr + incrementor * (size + 1);
 }
 
-static char* write(char* buffer, void* data, size_t size) {
-    memcpy(buffer, data, size);
-    return buffer + size;
+static char* write(char* buffer, int num, ...) {
+    va_list args;
+    va_start(args, num);
+    for (int i = 0; i < num; i++) {
+        buffer[i] = (char)va_arg(args, int);
+    }
+    va_end(args);
+    return buffer + num;
 }
 
 arch_native_t arch_compile(ctr_t* container,  library_t* library) {
@@ -88,22 +94,19 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
         ctr_bytecode_t* bc = list_get(texts, i);
         switch(bc->instruction) {
             case ASM_ENTER: {
-                char enter[] = { X86_ENTER, (char)bc->argument, 0, 0 };
                 // enter <bc->argument, $0 (alloc space on stack for local vars)
-                buffer = write(buffer, enter, sizeof(enter));
+                buffer = write(buffer, 4, X86_ENTER, bc->argument, 0, 0);
                 break;
             }
             case ASM_RET: {
-                char ret[] = { X86_LEAVE, X86_RET };
                 // leave (clean up stack)
                 // ret (return)
-                buffer = write(buffer, ret, sizeof(ret));
+                buffer = write(buffer, 2, X86_LEAVE, X86_RET);
                 break;
             }
             case ASM_NOP: {
-                char nop[] = { X86_NOP };
                 // not a operation
-                buffer = write(buffer, nop, sizeof(nop));
+                buffer = write(buffer, 1, X86_NOP);
                 break;
             }
             case ASM_ARG: 
@@ -117,8 +120,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 char* ptr = (char*)&addr;
 
                 // call <addr> (call function)
-                char sync[] = { X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3] };
-                buffer = write(buffer, sync, sizeof(sync));
+                buffer = write(buffer, 5, X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3]);
 
                 break;
             }
@@ -128,17 +130,15 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                     switch(bytecode->instruction) {
                         case ASM_ARG: {
                             char size = (char)bytecode->argument;
-                            char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
                             //  push value from stack
-                            buffer = write(buffer, arg, sizeof(arg));
+                            buffer = write(buffer, 5, 0x55, 0x83, 0x2C, 0x24, size);
                             argument_count++;
                             break;
                         }
                         case ASM_ARGV: {
                             char* ptr = (char*)&bytecode->argument;
                             // push <bc->argument>
-                            char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
-                            buffer = write(buffer, argv, sizeof(argv));
+                            buffer = write(buffer,5,  X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3]);
                             argument_count++;
                             break;
                         }
@@ -162,8 +162,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 
                 // call <addr> (call function)
                 // add esp, <size> (remove args from stack)
-                char synce[] = { X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3], X86_REGISTER, X86_ADD_ESP, size };
-                buffer = write(buffer, synce, sizeof(synce));
+                buffer = write(buffer, 8, X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3], X86_REGISTER, X86_ADD_ESP, size);
 
                 // reset argument count
                 argument_count = 0;
@@ -177,13 +176,11 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 char* ptr = (char*)&addr;
 
                 // call <addr> (call function)
-                char sync[] = { X86_JMP, ptr[0], ptr[1], ptr[2], ptr[3] };
-                buffer = write(buffer, sync, sizeof(sync));
+                buffer = write(buffer, 5, X86_JMP, ptr[0], ptr[1], ptr[2], ptr[3]);
                  break;     
             }
             default: {
-                char nop[] = { X86_NOP };
-                buffer = write(buffer, nop, sizeof(nop));
+                buffer = write(buffer, 1, X86_NOP);
                 break;
             }
         }
