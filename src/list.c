@@ -68,7 +68,21 @@ int list_pop(list_t* list, void* data) {
 }
 
 void list_clear(list_t* list) {
-    list_release(list);
+     // delete all items
+    list_item_t* item = list->first;
+    for (int i = 0; i < list->count; i++) {
+        list_item_t* deletable = item;
+
+        // get next
+        item = item->next;
+
+        // delete
+        free(deletable);
+    }
+
+    // reset list
+    list->first = NULL;
+    list->count = 0;
 }
 
 void list_release(list_t* list) {
