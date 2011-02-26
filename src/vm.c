@@ -11,10 +11,6 @@
 
 void print_arch_code(void* address, size_t seg_size);
 
-void print_wtf() {
-    printf("hello vm!\n");
-}
-
 int main(int argc, char* argv[]) {
 
     printf("start\n");
