@@ -105,7 +105,8 @@ void print_header(ctr_header_t header) {
     printf("%08X:\tcontent   v%u\n", 8, header.content_version);
     printf("%08X:\tsymbol    %4.2f KB (%u Bytes)\n", 12, header.symbol_size / 1024.0, header.symbol_size);
     printf("%08X:\texternal  %4.2f KB (%u Bytes)\n", 16, header.external_size / 1024.0, header.external_size);
-    printf("%08X:\ttext      %4.2f KB (%u Bytes)\n", 20, header.text_size / 1024.0, header.text_size);
+    printf("%08X:\tdata      %4.2f KB (%u Bytes)\n", 20, header.data_size / 1024.0, header.data_size);
+    printf("%08X:\ttext      %4.2f KB (%u Bytes)\n", 24, header.text_size / 1024.0, header.text_size);
 }
 
 void print_symbols(ctr_t* container) {

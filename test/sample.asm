@@ -1,4 +1,10 @@
 # comment
+.data
+    string      hello_world     "hello world! :D"
+    integer     random_number   42
+
+.text
+
 main:
             enter integer var1, integer var2, list string, string var1str
             call print_hello_world

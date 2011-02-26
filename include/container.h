@@ -8,7 +8,7 @@
 #define CTR_MAGIC_NUMBER 0xAFFEAFFE
 #define CTR_CONTAINER_VERSION 1
 #define CTR_BYTECODE_VERSION 1
-#define CTR_HEADER_SIZE 24
+#define CTR_HEADER_SIZE 28
 #define CTR_ADDR_SIZE 4
 #define CTR_SYMBOL_NAME_SIZE 512
 #define CTR_SYMBOL_SIZE 516
@@ -24,6 +24,7 @@ typedef struct ctr_header {
     unsigned int content_version;
     size_t symbol_size;
     size_t external_size;
+    size_t data_size;
     size_t text_size;
 } ctr_header_t;
 
@@ -32,6 +33,7 @@ typedef struct ctr {
     ctr_header_t header;
     map_t symbols;
     map_t externals;
+    char* data;
     list_t texts;
 } ctr_t;
 

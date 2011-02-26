@@ -4,6 +4,7 @@
 #include "assembly.h"
 #include "util.h"
 #include "container.h"
+#include <stdint.h>
 
 #define READ_BUFFER_SIZE 1024
 #define SEGMENT_BUFFER_SIZE 1024
@@ -19,7 +20,61 @@ typedef struct command {
     list_t args;
 } command_t;
 
-void read_file(FILE* input, ctr_t* container, list_t* commands) {
+void read_text_segment(FILE* input, ctr_t* container, list_t* commands);
+
+void read_data_segment(FILE* input, ctr_t* container, list_t* commands) {
+    char line[READ_BUFFER_SIZE];
+
+    while(!feof(input)) {
+        fgets(line, READ_BUFFER_SIZE, input);
+
+        switch(line[0]) {
+            // comment
+            case '#': continue;
+
+            // segment change
+            case '.': {
+                char* segment = strtok(line, ". \t\r\n");
+                if (strcmp(segment, "text") == 0) {
+                    read_text_segment(input, container, commands);
+                    return;
+                } else if (strcmp(segment, "data") != 0) {
+                    fprintf(stderr, "error: unknown segment %s\n", segment);
+                    return;
+                }
+                continue;
+            }
+            // data
+            default: {
+                char* type = strtok(line, " \t\r\n");
+                char* name = strtok(NULL, " \t\r\n");
+                char* data = NULL;
+                
+                if (type) {
+                    if (strcmp(type, "string") == 0) {
+                        strtok(NULL, "\"\r\n");
+                        data = strtok(NULL, "\"\t\r\n");
+                        int32_t length = strlen(data);
+                        int index = container->header.data_size;
+                        container->header.data_size += (length + 1) * sizeof(int32_t);
+                        container->data = realloc(container->data, container->header.data_size);
+
+                        int32_t* string = (int32_t*)&container->data[index];
+                        string[0] = length;
+                        for (int32_t i = 0; i < length; i++) {
+                            string[i + 1] = (int32_t)data[i];
+                        }
+                    } else if(strcmp(type, "integer") == 0) {
+                        data = strtok(NULL, " \t\r\n");
+                    }
+                    printf("'%s' of type '%s' with data = '%s'\n", name, type, data);
+                }
+            }
+        }
+    }
+}
+
+void read_text_segment(FILE* input, ctr_t* container, list_t* commands) {
     fseek(input, 0, SEEK_CUR);
     map_t* symbols = &container->symbols;
     map_t* externals = &container->externals;
@@ -31,8 +86,21 @@ void read_file(FILE* input, ctr_t* container, list_t* commands) {
     while(!feof(input)) {
         fgets(line, READ_BUFFER_SIZE, input);
 
-        if (line[0] == '#') {
-            continue;
+        switch(line[0]) {
+            // comment
+            case '#': continue;
+
+            // segment change
+            case '.': {
+                char* segment = strtok(line, ". \t\r\n");
+                if (strcmp(segment, "data") == 0) {
+                    read_data_segment(input, container, commands);
+                    return;
+                } else if (strcmp(segment, "text") != 0) {
+                    fprintf(stderr, "error: unknown segment %s\n", segment);
+                    return;
+                }
+            }
         }
 
         char* colon = strchr(line, ':');
@@ -78,7 +146,6 @@ void assembler(FILE* input, FILE* output) {
     // init assembly table
     asm_init();
 
-    // read file
     ctr_t container;
     ctr_init(&container);
     map_t* symbols = &container.symbols;
@@ -87,7 +154,9 @@ void assembler(FILE* input, FILE* output) {
 
     list_t commands;
     list_init(&commands, sizeof(command_t));
-    read_file(input, &container, &commands);
+
+    // read file
+    read_data_segment(input, &container, &commands);
 
     // variables
     map_t variables;
