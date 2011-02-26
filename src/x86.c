@@ -106,43 +106,12 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 buffer = write(buffer, nop, sizeof(nop));
                 break;
             }
-            case ASM_ARG: {
-                list_add(&arg_stack, bc);
-
-                /*char size = (char)bc->argument;
-                char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
-                //  push value from stack
-                buffer = write(buffer, arg, sizeof(arg));
-                argument_count++;*/
-                break;
-            }
+            case ASM_ARG: 
             case ASM_ARGV: {
                 list_add(&arg_stack, bc);
-
-                /*char* ptr = (char*)&bc->argument;
-                // push <bc->argument>
-                char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
-                buffer = write(buffer, argv, sizeof(argv));
-                argument_count++;*/
                 break;
             }
             case ASM_CALL: {
-                /*for (int i = 0; i < arg_stack.count; i++) {
-                    ctr_bytecode_t* bc = list_get(&arg_stack, i);
-                    if (bc->instruction == ASM_ARG) {
-                        char size = (char)bc->argument;
-                        char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
-                        //  push value from stack
-                        buffer = write(buffer, arg, sizeof(arg));
-                        argument_count++;
-                    } else {
-                        char* ptr = (char*)&bc->argument;
-                        // push <bc->argument>
-                        char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
-                        buffer = write(buffer, argv, sizeof(argv));
-                        argument_count++;
-                    }
-                }*/
                 void* subroutine = get_subroutine_addr(texts, buffer, i, i + bc->argument); 
                 void* addr = (char*)call_addr(buffer, subroutine);
                 char* ptr = (char*)&addr;
@@ -151,26 +120,30 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 char sync[] = { X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3] };
                 buffer = write(buffer, sync, sizeof(sync));
 
-                list_clear(&arg_stack);
                 break;
             }
             case ASM_CALLE: {
-                /*for (int i = 0; i < arg_stack.count; i++) {
-                    ctr_bytecode_t* bc = list_get(&arg_stack, i);
-                    if (bc->instruction == ASM_ARG) {
-                        char size = (char)bc->argument;
-                        char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
-                        //  push value from stack
-                        buffer = write(buffer, arg, sizeof(arg));
-                        argument_count++;
-                    } else {
-                        char* ptr = (char*)&bc->argument;
-                        // push <bc->argument>
-                        char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
-                        buffer = write(buffer, argv, sizeof(argv));
-                        argument_count++;
-                    }
-                }*/
+                for (int i = 0; i < arg_stack.count; i++) {
+                    ctr_bytecode_t* bytecode  = list_get(&arg_stack, i);
+                    switch(bytecode->instruction) {
+                        case ASM_ARG: {
+                            char size = (char)bytecode->argument;
+                            char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
+                            //  push value from stack
+                            buffer = write(buffer, arg, sizeof(arg));
+                            argument_count++;
+                            break;
+                        }
+                        case ASM_ARGV: {
+                            char* ptr = (char*)&bytecode->argument;
+                            // push <bc->argument>
+                            char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
+                            buffer = write(buffer, argv, sizeof(argv));
+                            argument_count++;
+                            break;
+                        }
+                   }
+                }
 
                 char* symbol = map_find_value(externals, &bc->argument);
                 if (!symbol) {
