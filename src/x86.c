@@ -83,7 +83,6 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
     native.text_size = header->text_size / CTR_BYTECODE_SIZE * 5 + header->symbol_size / CTR_SYMBOL_SIZE * 8;
     native.text = malloc(native.text_size);
 
-    int argument_count = 0;
     char* buffer = native.text;
     
     list_t arg_stack;
@@ -132,14 +131,12 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                             char size = (char)bytecode->argument;
                             //  push value from stack
                             buffer = write(buffer, 5, 0x55, 0x83, 0x2C, 0x24, size);
-                            argument_count++;
                             break;
                         }
                         case ASM_ARGV: {
                             char* ptr = (char*)&bytecode->argument;
                             // push <bc->argument>
                             buffer = write(buffer,5,  X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3]);
-                            argument_count++;
                             break;
                         }
                    }
@@ -158,14 +155,11 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 
                 void* addr = call_addr(buffer, function);
                 char* ptr = (char*)&addr;
-                char size = 4 * argument_count;
+                char size = 4 * arg_stack.count;
                 
                 // call <addr> (call function)
                 // add esp, <size> (remove args from stack)
                 buffer = write(buffer, 8, X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3], X86_REGISTER, X86_ADD_ESP, size);
-
-                // reset argument count
-                argument_count = 0;
 
                 list_clear(&arg_stack);
                 break;
