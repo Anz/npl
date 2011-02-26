@@ -67,6 +67,10 @@ int list_pop(list_t* list, void* data) {
     return list->count + 1;
 }
 
+void list_clear(list_t* list) {
+    list_release(list);
+}
+
 void list_release(list_t* list) {
     // delete all items
     list_item_t* item = list->first;

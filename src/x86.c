@@ -79,6 +79,9 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
 
     int argument_count = 0;
     char* buffer = native.text;
+    
+    list_t arg_stack;
+    list_init(&arg_stack, sizeof(ctr_bytecode_t));
 
     // compile to x86 code
     for(unsigned int i = 0; i < texts->count; i++) {
@@ -104,22 +107,42 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 break;
             }
             case ASM_ARG: {
-                char size = (char)bc->argument;
+                list_add(&arg_stack, bc);
+
+                /*char size = (char)bc->argument;
                 char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
                 //  push value from stack
                 buffer = write(buffer, arg, sizeof(arg));
-                argument_count++;
+                argument_count++;*/
                 break;
             }
             case ASM_ARGV: {
-                char* ptr = (char*)&bc->argument;
+                list_add(&arg_stack, bc);
+
+                /*char* ptr = (char*)&bc->argument;
                 // push <bc->argument>
                 char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
                 buffer = write(buffer, argv, sizeof(argv));
-                argument_count++;
+                argument_count++;*/
                 break;
             }
             case ASM_CALL: {
+                /*for (int i = 0; i < arg_stack.count; i++) {
+                    ctr_bytecode_t* bc = list_get(&arg_stack, i);
+                    if (bc->instruction == ASM_ARG) {
+                        char size = (char)bc->argument;
+                        char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
+                        //  push value from stack
+                        buffer = write(buffer, arg, sizeof(arg));
+                        argument_count++;
+                    } else {
+                        char* ptr = (char*)&bc->argument;
+                        // push <bc->argument>
+                        char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
+                        buffer = write(buffer, argv, sizeof(argv));
+                        argument_count++;
+                    }
+                }*/
                 void* subroutine = get_subroutine_addr(texts, buffer, i, i + bc->argument); 
                 void* addr = (char*)call_addr(buffer, subroutine);
                 char* ptr = (char*)&addr;
@@ -127,9 +150,28 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
                 // call <addr> (call function)
                 char sync[] = { X86_CALL, ptr[0], ptr[1], ptr[2], ptr[3] };
                 buffer = write(buffer, sync, sizeof(sync));
-              break;
+
+                list_clear(&arg_stack);
+                break;
             }
             case ASM_CALLE: {
+                /*for (int i = 0; i < arg_stack.count; i++) {
+                    ctr_bytecode_t* bc = list_get(&arg_stack, i);
+                    if (bc->instruction == ASM_ARG) {
+                        char size = (char)bc->argument;
+                        char arg[] = { 0x55, 0x83, 0x2C, 0x24, size };
+                        //  push value from stack
+                        buffer = write(buffer, arg, sizeof(arg));
+                        argument_count++;
+                    } else {
+                        char* ptr = (char*)&bc->argument;
+                        // push <bc->argument>
+                        char argv[] = { X86_PUSH_VALUE, ptr[0], ptr[1], ptr[2], ptr[3] };
+                        buffer = write(buffer, argv, sizeof(argv));
+                        argument_count++;
+                    }
+                }*/
+
                 char* symbol = map_find_value(externals, &bc->argument);
                 if (!symbol) {
                     fprintf(stderr, "external symbol not fount: %i\n", bc->argument);
@@ -152,6 +194,8 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
 
                 // reset argument count
                 argument_count = 0;
+
+                list_clear(&arg_stack);
                 break;
             }
             case ASM_JMP: {
@@ -176,6 +220,8 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
     native.text_size = (void*)buffer - native.text;
     native.text = realloc(native.text, native.text_size);
     native.main = native.text;
+
+    list_release(&arg_stack);
 
     return native;
 }

@@ -19,6 +19,7 @@ void list_init(list_t* list, size_t data_size);
 void list_add(list_t* list, void* data);
 void* list_get(list_t* list, unsigned int index);
 int list_pop(list_t* list, void* data);
+void list_clear(list_t* list);
 void list_release(list_t* list);
 
 #endif // LIST_H
