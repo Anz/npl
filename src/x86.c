@@ -5,6 +5,8 @@
 #include <string.h>
 #include "util.h"
 #include "assembly.h"
+#include <sys/mman.h>
+#include <errno.h>
 
 // x86 opcdoes
 #define X86_ENTER      0xC8
@@ -18,6 +20,8 @@
 #define X86_ADD_ESP    0xC4
 #define X86_PUSH       0xFF
 #define X86_PUSH_VALUE 0x68
+
+#define PAGESIZE 4096
 
 static void* call_addr(void* source, void* target) {
     if (source > target) {
@@ -80,11 +84,14 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
     list_t* texts = &container->texts;
 
     // alloc space
-    native.text_size = header->text_size / CTR_BYTECODE_SIZE * 5 + header->symbol_size / CTR_SYMBOL_SIZE * 8;
+    native.text_size = (header->text_size / CTR_BYTECODE_SIZE * 5 + header->symbol_size / CTR_SYMBOL_SIZE * 8) + PAGESIZE - 1;
     native.text = malloc(native.text_size);
+    char* buffer = (char*)(((int) native.text + PAGESIZE -1) & ~ (PAGESIZE-1));
+    native.main = (void*)buffer;
+    if (mprotect(buffer, 1024, PROT_READ | PROT_WRITE | PROT_EXEC) != 0 ) {
+       fprintf(stderr, "failed to set memory executable: %s\n", strerror(errno));
+    }
 
-    char* buffer = native.text;
-    
     list_t arg_stack;
     list_init(&arg_stack, sizeof(ctr_bytecode_t));
 
@@ -179,11 +186,6 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
             }
         }
     }
-
-    // release unused memory
-    native.text_size = (void*)buffer - native.text;
-    native.text = realloc(native.text, native.text_size);
-    native.main = native.text;
 
     list_release(&arg_stack);
 
