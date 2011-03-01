@@ -10,6 +10,8 @@ main:
             call print_hello_world
             call print_hello_world
             call print_hello_world
+            argv 50
+            init integer i
             argv 4
             arg string
             calle list_init

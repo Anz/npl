@@ -16,6 +16,7 @@
 #define ASM_JG     0x0C
 #define ASM_JGE    0x0D
 #define ASM_RET    0x0E
+#define ASM_INIT   0x0F
 
 void asm_init();
 void asm_release();

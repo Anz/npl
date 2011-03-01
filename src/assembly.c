@@ -21,7 +21,8 @@ void asm_init() {
         "jle",
         "jg",
         "jge",
-        "ret"
+        "ret",
+        "init"
     };
 
     map_init(&assembly, MAP_STR, sizeof(char));
