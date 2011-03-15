@@ -2,17 +2,24 @@
 #define CTR_H
 
 #include <stdio.h>
+#include <stdint.h>
 #include "map.h"
 
 // constans
 #define CTR_MAGIC_NUMBER 0xAFFEAFFE
 #define CTR_CONTAINER_VERSION 1
 #define CTR_BYTECODE_VERSION 1
-#define CTR_HEADER_SIZE 28
+#define CTR_HEADER_SIZE 32
 #define CTR_ADDR_SIZE 4
 #define CTR_SYMBOL_NAME_SIZE 512
 #define CTR_SYMBOL_SIZE 516
+#define CTR_NSYMBOL_SIZE 16
 #define CTR_BYTECODE_SIZE 5
+
+#define CTR_SYMBOL_TYPE 0x0
+#define CTR_SYMBOL_STR  0x1
+#define CTR_SYMBOL_INT  0x2
+#define CTR_SYMBOL_TEXT 0x3
 
 // address type
 typedef int ctr_addr;
@@ -23,6 +30,7 @@ typedef struct ctr_header {
     unsigned int container_version;
     unsigned int content_version;
     size_t symbol_size;
+    size_t nsymbol_size;
     size_t external_size;
     size_t data_size;
     size_t text_size;
@@ -31,11 +39,18 @@ typedef struct ctr_header {
 // container type
 typedef struct ctr {
     ctr_header_t header;
+    map_t nsymbols;
     map_t symbols;
     map_t externals;
-    char* data;
+    //char* data;
     list_t texts;
 } ctr_t;
+
+// symbol
+typedef struct ctr_symbol {
+    int32_t type;
+    void* data;
+} ctr_symbol_t;
 
 // instruction
 typedef struct ctr_bytecode {

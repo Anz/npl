@@ -14,6 +14,16 @@ void print_symbols(ctr_t* container);
 void print_externals(ctr_t* container);
 void print_text(ctr_t* container);
 
+char* type_to_str(int32_t type) {
+    static char buffer[10];
+    switch (type) {
+        case CTR_SYMBOL_STR: memcpy(buffer, "String", 7); break;
+        case CTR_SYMBOL_INT: memcpy(buffer, "Integer", 8); break;
+        default: memcpy(buffer, "Unkown", 7); break;
+    }
+    return buffer;
+}
+
 int main(int argc, char* argv[]) {
 
     if (argc < 2) {
@@ -100,13 +110,13 @@ void print_usage() {
 
 void print_header(ctr_header_t header) {
     printf("header segment:\n\n");
-    printf("%08X:\tmagic number 0x%X\n", 0, header.magic_number);
-    printf("%08X:\tcontainer v%u\n", 4,  header.container_version);
-    printf("%08X:\tcontent   v%u\n", 8, header.content_version);
-    printf("%08X:\tsymbol    %4.2f KB (%u Bytes)\n", 12, header.symbol_size / 1024.0, header.symbol_size);
-    printf("%08X:\texternal  %4.2f KB (%u Bytes)\n", 16, header.external_size / 1024.0, header.external_size);
-    printf("%08X:\tdata      %4.2f KB (%u Bytes)\n", 20, header.data_size / 1024.0, header.data_size);
-    printf("%08X:\ttext      %4.2f KB (%u Bytes)\n", 24, header.text_size / 1024.0, header.text_size);
+    printf("%08X:\tMAGIC NUMBER\t0x%X\n", 0, header.magic_number);
+    printf("%08X:\tVersion\t\t%u\n", 4,  header.container_version);
+    printf("%08X:\tSymbol Segment\t%4.2f KB (%u Bytes)\n", 12, header.symbol_size / 1024.0, header.symbol_size);
+    printf("%08X:\tSymbol Segment\t%4.2f KB (%u Bytes)\n", 12, header.nsymbol_size / 1024.0, header.nsymbol_size);
+    printf("%08X:\tExternal Seg.\t%4.2f KB (%u Bytes)\n", 16, header.external_size / 1024.0, header.external_size);
+    printf("%08X:\tData Segment\t%4.2f KB (%u Bytes)\n", 20, header.data_size / 1024.0, header.data_size);
+    printf("%08X:\tText Segment\t%4.2f KB (%u Bytes)\n", 24, header.text_size / 1024.0, header.text_size);
 }
 
 void print_symbols(ctr_t* container) {
@@ -116,6 +126,36 @@ void print_symbols(ctr_t* container) {
     for(unsigned int index = 0; index < symbols->count; index++) {
         map_entry_t* symbol = list_get(symbols, index);
         printf("%08X:\t%08X \t%s\n", CTR_HEADER_SIZE + index * CTR_SYMBOL_SIZE, *(ctr_addr*)symbol->value, (char*)symbol->key);
+    }
+    printf("\n");
+
+    printf("symbol segment:\n\n");
+    printf("%10s\ttype\t\tname\n\n", "");
+    symbols = &container->nsymbols.list;
+    int data_addr = CTR_HEADER_SIZE;
+    for(unsigned int index = 0; index < symbols->count; index++) {
+        map_entry_t* entry = list_get(symbols, index);
+        char* name = entry->key;
+        ctr_symbol_t* symbol = entry->value;
+        printf("%08X:\t%s\t\t%s\n", data_addr, type_to_str(symbol->type), name);
+        data_addr += 4 * sizeof(int32_t) + strlen(name);
+        switch (symbol->type) {
+            case CTR_SYMBOL_INT: {
+                int32_t value = *(int32_t*)symbol->data;
+                printf("integer = %i (%08X)\n", value, value);
+                break;
+            }
+            case CTR_SYMBOL_STR: {
+                int32_t length = *(int32_t*)symbol->data;
+                char str[length + 1];
+                for (int32_t i = 0; i < length; i++) {
+                    str[i] = (char)((int32_t*)symbol->data)[i + 1];
+                }
+                str[length] = '\0';
+                printf("string = %i '%s'\n", length, str); 
+                break;
+            }
+        }
     }
     printf("\n");
 }

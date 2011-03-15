@@ -46,6 +46,7 @@ void read_data_segment(FILE* input, ctr_t* container, list_t* commands) {
             }
             // data
             default: {
+                ctr_symbol_t symbol;
                 char* type = strtok(line, " \t\r\n");
                 char* name = strtok(NULL, " \t\r\n");
                 char* data = NULL;
@@ -55,19 +56,36 @@ void read_data_segment(FILE* input, ctr_t* container, list_t* commands) {
                         strtok(NULL, "\"\r\n");
                         data = strtok(NULL, "\"\t\r\n");
                         int32_t length = strlen(data);
-                        int index = container->header.data_size;
-                        container->header.data_size += (length + 1) * sizeof(int32_t);
-                        container->data = realloc(container->data, container->header.data_size);
+                        int32_t type_size = length * sizeof(int32_t);
+                        symbol.type = CTR_SYMBOL_STR;
+                        symbol.data = malloc(type_size + sizeof(int32_t));
 
-                        int32_t* string = (int32_t*)&container->data[index];
-                        string[0] = length;
+                        int index = container->header.data_size;
+                        container->header.data_size += type_size;
+                        //container->data = realloc(container->data, container->header.data_size);
+
+                        //int32_t* string = (int32_t*)&container->data[index];
+                        int32_t* nstring = symbol.data;
+                        nstring[0] = length;
+                        //string[0] = swap_endian(length);
                         for (int32_t i = 0; i < length; i++) {
-                            string[i + 1] = (int32_t)data[i];
+                            //string[i + 1] = swap_endian((int32_t)data[i]);
+                            nstring[i + 1] = (int32_t)data[i];
                         }
                     } else if(strcmp(type, "integer") == 0) {
                         data = strtok(NULL, " \t\r\n");
+                        int32_t value = swap_endian(atoi(data));
+                        symbol.type = CTR_SYMBOL_INT;
+                        symbol.data = malloc(sizeof(int32_t));
+                        *(int32_t*)symbol.data = swap_endian(value);
+                        int index = container->header.data_size;
+                        container->header.data_size += sizeof(int32_t);
+                        //container->data = realloc(container->data, container->header.data_size);
+                        //memcpy(&container->data[index], &value, sizeof(int32_t)); 
                     }
                     printf("'%s' of type '%s' with data = '%s'\n", name, type, data);
+                    size_t length = strlen(name);
+                    map_set(&container->nsymbols, name, &symbol);
                 }
             }
         }
