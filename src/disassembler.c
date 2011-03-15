@@ -12,6 +12,7 @@ void print_usage();
 void print_header(ctr_header_t header);
 void print_symbols(ctr_t* container);
 void print_externals(ctr_t* container);
+void print_data(ctr_t* container);
 void print_text(ctr_t* container);
 
 char* type_to_str(int32_t type) {
@@ -91,6 +92,7 @@ int main(int argc, char* argv[]) {
 
     // print text
     if(settext){
+        print_data(&container);
         print_text(&container);
     }
 
@@ -168,6 +170,37 @@ void print_externals(ctr_t* container) {
     for (unsigned int i = 0; i < externals->count; i++) {
         map_entry_t* external = list_get(externals, i);
         printf("%08X:\t%s\n", offset + i * CTR_SYMBOL_NAME_SIZE, (char*)external->key);
+    }
+    printf("\n");
+}
+
+void print_data(ctr_t* container) {
+    printf("data segment:\n\n");
+    printf("%10s\ttype\t\tname\t\tvalue\n\n", "");
+    list_t* symbols = &container->nsymbols.list;
+    int data_addr = CTR_HEADER_SIZE;
+    for(unsigned int index = 0; index < symbols->count; index++) {
+        map_entry_t* entry = list_get(symbols, index);
+        char* name = entry->key;
+        ctr_symbol_t* symbol = entry->value;
+        data_addr += 4 * sizeof(int32_t) + strlen(name);
+        switch (symbol->type) {
+            case CTR_SYMBOL_INT: {
+                int32_t value = *(int32_t*)symbol->data;
+                printf("%08X:\t%s\t\t%s\t%i\n", data_addr, type_to_str(symbol->type), name, value);
+                break;
+            }
+            case CTR_SYMBOL_STR: {
+                int32_t length = *(int32_t*)symbol->data;
+                char str[length + 1];
+                for (int32_t i = 0; i < length; i++) {
+                    str[i] = (char)((int32_t*)symbol->data)[i + 1];
+                }
+                str[length] = '\0';
+                printf("%08X:\t%s\t\t%s\t'%s'\n", data_addr, type_to_str(symbol->type), name, str);
+                break;
+            }
+        }
     }
     printf("\n");
 }
