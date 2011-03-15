@@ -141,23 +141,6 @@ void print_symbols(ctr_t* container) {
         ctr_symbol_t* symbol = entry->value;
         printf("%08X:\t%s\t\t%s\n", data_addr, type_to_str(symbol->type), name);
         data_addr += 4 * sizeof(int32_t) + strlen(name);
-        switch (symbol->type) {
-            case CTR_SYMBOL_INT: {
-                int32_t value = *(int32_t*)symbol->data;
-                printf("integer = %i (%08X)\n", value, value);
-                break;
-            }
-            case CTR_SYMBOL_STR: {
-                int32_t length = *(int32_t*)symbol->data;
-                char str[length + 1];
-                for (int32_t i = 0; i < length; i++) {
-                    str[i] = (char)((int32_t*)symbol->data)[i + 1];
-                }
-                str[length] = '\0';
-                printf("string = %i '%s'\n", length, str); 
-                break;
-            }
-        }
     }
     printf("\n");
 }

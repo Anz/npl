@@ -19,7 +19,7 @@
 #define CTR_SYMBOL_TYPE 0x0
 #define CTR_SYMBOL_STR  0x1
 #define CTR_SYMBOL_INT  0x2
-#define CTR_SYMBOL_TEXT 0x3
+#define CTR_SYMBOL_FUNC 0x3
 
 // address type
 typedef int ctr_addr;
