@@ -42,7 +42,6 @@ typedef struct ctr {
     map_t nsymbols;
     map_t symbols;
     map_t externals;
-    //char* data;
     list_t texts;
 } ctr_t;
 

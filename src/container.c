@@ -64,7 +64,6 @@ void read_nsymbol(FILE* file, size_t size, ctr_t* container) {
         long pointer = ftell(file);
         long data_segment = CTR_HEADER_SIZE + container->header.symbol_size + container->header.nsymbol_size  + container->header.external_size;
         fseek(file, data_segment + addr, SEEK_SET);
-        printf("data addr %i\n", addr);
         switch (type) {
              case CTR_SYMBOL_STR: {
                  symbol.data = malloc(type_size + sizeof(int32_t));
@@ -133,7 +132,6 @@ void ctr_init(ctr_t* container) {
     map_init(&container->symbols, MAP_STR, sizeof(ctr_addr));
     map_init(&container->nsymbols, MAP_STR, sizeof(ctr_symbol_t));
     map_init(&container->externals, MAP_STR, sizeof(int));
-    //container->data = NULL;
     list_init(&container->texts, sizeof(ctr_bytecode_t));
 }
 
@@ -224,7 +222,6 @@ void ctr_write(FILE* file, ctr_t* container) {
     }
 
     // write data
-    //fwrite(container->data, data_size, sizeof(char), file);    
     for (int i = 0; i < nsymbols->list.count; i++) {
         map_entry_t* entry = list_get(&nsymbols->list, i);
         ctr_symbol_t* symbol = entry->value;
@@ -233,7 +230,6 @@ void ctr_write(FILE* file, ctr_t* container) {
                 int32_t* string = symbol->data;
                 int32_t length = string[0];
                 printf("write strlen: %i\n", length);
-                //fwrite(symbol->data, length, sizeof(int32_t), file);
                 for (int i = 0; i < length; i++) {
                     int32_t value = swap_endian(string[i + 1]);
                     fwrite(&value, 1, sizeof(int32_t), file);
@@ -264,7 +260,6 @@ void ctr_write(FILE* file, ctr_t* container) {
 void ctr_release(ctr_t* container) {
     map_release(&container->symbols);
     map_release(&container->externals);
-    //free(container->data);
     list_release(&container->texts);
 }
 
