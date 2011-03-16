@@ -1,330 +1,168 @@
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "list.h"
+#include "map.h"
 #include "assembly.h"
-#include "util.h"
 #include "container.h"
-#include <stdint.h>
 
-#define READ_BUFFER_SIZE 1024
-#define SEGMENT_BUFFER_SIZE 1024
-#define ASM_DATA_SEGMENT "data"
-#define ASM_TEXT_SEGMENT "text"
-#define ASM_COMMENT '#'
-#define ASM_SEGMENT '.'
-#define ASM_TAB '\t'
-#define ASM_SPACE ' '
+#define SEG_DATA 0
+#define SEG_TEXT 1
+#define BUFFER_SIZE 512
 
-typedef struct command {
-    char code;
-    list_t args;
-} command_t;
-
-void read_text_segment(FILE* input, ctr_t* container, list_t* commands);
-
-void read_data_segment(FILE* input, ctr_t* container, list_t* commands) {
-    char line[READ_BUFFER_SIZE];
-
-    while(!feof(input)) {
-        fgets(line, READ_BUFFER_SIZE, input);
-
-        switch(line[0]) {
-            // comment
-            case '#': continue;
-
-            // segment change
-            case '.': {
-                char* segment = strtok(line, ". \t\r\n");
-                if (strcmp(segment, "text") == 0) {
-                    read_text_segment(input, container, commands);
-                    return;
-                } else if (strcmp(segment, "data") != 0) {
-                    fprintf(stderr, "error: unknown segment %s\n", segment);
-                    return;
-                }
-                continue;
-            }
-            // data
-            default: {
-                ctr_symbol_t symbol;
-                char* type = strtok(line, " \t\r\n");
-                char* name = strtok(NULL, " \t\r\n");
-                char* data = NULL;
-                
-                if (type) {
-                    if (strcmp(type, "string") == 0) {
-                        strtok(NULL, "\"\r\n");
-                        data = strtok(NULL, "\"\t\r\n");
-                        int32_t length = strlen(data);
-                        int32_t type_size = length * sizeof(int32_t);
-                        symbol.type = CTR_SYMBOL_STR;
-                        symbol.data = malloc(type_size + sizeof(int32_t));
-
-                        container->header.data_size += type_size;
-                        int32_t* nstring = symbol.data;
-                        nstring[0] = length;
-                        for (int32_t i = 0; i < length; i++) {
-                            nstring[i + 1] = (int32_t)data[i];
-                        }
-                    } else if(strcmp(type, "integer") == 0) {
-                        data = strtok(NULL, " \t\r\n");
-                        int32_t value = swap_endian(atoi(data));
-                        symbol.type = CTR_SYMBOL_INT;
-                        symbol.data = malloc(sizeof(int32_t));
-                        *(int32_t*)symbol.data = swap_endian(value);
-                        container->header.data_size += sizeof(int32_t);
-                    }
-                    printf("'%s' of type '%s' with data = '%s'\n", name, type, data);
-                    map_set(&container->nsymbols, name, &symbol);
-                }
-            }
-        }
-    }
-}
-
-void read_text_segment(FILE* input, ctr_t* container, list_t* commands) {
-    fseek(input, 0, SEEK_CUR);
-    map_t* symbols = &container->symbols;
-    map_t* externals = &container->externals;
-
-    ctr_addr addr = 0;
-    char line[READ_BUFFER_SIZE];
-    int external_index = 0;
-
-    while(!feof(input)) {
-        fgets(line, READ_BUFFER_SIZE, input);
-
-        switch(line[0]) {
-            // comment
-            case '#': continue;
-
-            // segment change
-            case '.': {
-                char* segment = strtok(line, ". \t\r\n");
-                if (strcmp(segment, "data") == 0) {
-                    read_data_segment(input, container, commands);
-                    return;
-                } else if (strcmp(segment, "text") != 0) {
-                    fprintf(stderr, "error: unknown segment %s\n", segment);
-                    return;
-                }
-            }
-        }
-
-        char* colon = strchr(line, ':');
-        char* instruction = NULL;
-        if (colon == NULL) {
-            instruction = strtok(line, " \t\r\n");
-        } else {
-            instruction = strtok(colon+1, " \t\r\n"); 
-        }
-
-        if (colon != NULL) {
-            char* name = strtok(line, ": ");
-            // add symbol to map
-            map_set(symbols, name, &addr);
-
-            ctr_symbol_t symbol;
-            symbol.data = malloc(sizeof(list_t));
-            list_init(symbol.data, sizeof(ctr_bytecode_t));
-            symbol.type = CTR_SYMBOL_FUNC;
-            map_set(&container->nsymbols, name, &symbol);
-        }
-
-        if (instruction) {
-            command_t command;
-            command.code = asm_mnemonic2opcode(instruction);
-            list_init(&command.args, 50);
-            char* arg = strtok(NULL, " ,\t\r\n");
-            while (arg) {
-                char text[50];
-                memset(text, 0, 50);
-                strncpy(text, arg, 50);
-                list_add(&command.args, text);
-                arg = strtok(NULL, " ,\t\r\n");
-            }
-            if (command.code == ASM_CALLE) {
-                char* key = (char*)list_get(&command.args, 0);
-                if (!map_find_key(externals, key)) {
-                    map_set(externals, key, &external_index);
-                    external_index++;
-                }
-
-                ctr_symbol_t symbol;
-                symbol.data = NULL;
-                symbol.type = CTR_SYMBOL_EXTERN;
-                map_set(&container->nsymbols, key, &symbol);
-            }
-            list_add(commands, &command);
-            addr++;
-        }
-    }
-}
-
-void assembler(FILE* input, FILE* output) {
-    // init assembly table
-    asm_init();
-
-    ctr_t container;
-    ctr_init(&container);
-    map_t* symbols = &container.symbols;
-    map_t* externals = &container.externals;
-    list_t* texts = &container.texts;
-
-    list_t commands;
-    list_init(&commands, sizeof(command_t));
-
-    // read file
-    read_data_segment(input, &container, &commands);
-
-    // variables
-    map_t variables;
-    map_init(&variables, MAP_STR, sizeof(int));
-
-    // types
-    map_t types;
-    map_init(&types, MAP_STR, sizeof(int));
-    int integer = 4;
-    int list = 4;
-    map_set(&types, "integer", &integer);
-    map_set(&types, "list", &list);
-    map_set(&types, "string", &list);
-
-    for (unsigned int i = 0; i < commands.count; i++) {
-        command_t* command = list_get(&commands, i);
-        ctr_bytecode_t bc;
-        bc.instruction = command->code;
-        bc.argument = 0;
-
-        char* arg1 = list_get(&command->args, 0);
-        if (command->args.count > 0) {
-            switch (command->code) {
-                case ASM_JMP:
-                case ASM_JE:
-                case ASM_JNE:
-                case ASM_JL:
-                case ASM_JLE:
-                case ASM_JG:
-                case ASM_JGE:
-                case ASM_CALL: {
-                    ctr_addr* addr = (int*)map_find_key(symbols, arg1);
-                    if (addr) {
-                        // maybe **addr
-                        bc.argument = *addr - i;
-                    } else {
-                        fprintf(stderr, "sync address not found %s\n", arg1); 
-                    }
-                    break;
-                }
-                case ASM_CALLE: { 
-                    int* index = map_find_key(externals, arg1);
-                    if (index) {
-                        bc.argument = *index;
-                    } else {
-                        fprintf(stderr, "(a)synce address not found %s\n", arg1); 
-                    }
-                    break;
-                }
-                case ASM_ENTER: {
-                    for (unsigned int i = 0; i + 1 < command->args.count; i += 2) {
-                        char* type = list_get(&command->args, i);
-                        char* name = list_get(&command->args, i+1);
-                        int* type_size = map_find_key(&types, type);
-                        if (!type_size) {
-                            fprintf(stderr, "error could not find type: %s\n", type);
-                            continue;
-                        }
-                        bc.argument += *type_size;
-                        map_set(&variables, name, &bc.argument);
-                    }
-                    break;
-                }
-                case ASM_ARG: {
-                    ctr_addr* variable = map_find_key(&variables, arg1);
-                    if (variable) {
-                        bc.argument = *variable;
-                    } else {
-                        fprintf(stderr, "error could not find variable: %s\n", arg1);
-                    }
-                    break;
-                }
-                case ASM_ARGV: {
-                    switch (arg1[0]) {
-                        case '\'': 
-                            bc.argument = arg1[1];
-                            break;
-                        case '"': {
-                            int length;
-                            for (length = 0; arg1[length+1] != '"'; length++);
-                            length--;
-                            for (int i = length; i > 0; i--) {
-                                ctr_bytecode_t argv;
-                                argv.instruction = ASM_ARGV;
-                                argv.argument = arg1[i];
-                                list_add(texts, &argv);
-                            }
-                            bc.argument = length;
-
-                            break;
-                        }
-                        default: 
-                            bc.argument = atoi(arg1);
-                            break;
-                    }
-                    break;
-                }
-            }
-        }
-
-        list_add(texts, &bc);
-    }
-
-    // write container
-    ctr_write(output, &container);
-
-    // release
-    ctr_release(&container);
-    map_release(&variables);
-    asm_release();
-    map_release(&types);
-
-}
-
-void print_usage();
+static ctr_t read(FILE* file);
+static char* func_name(char* line);
+static ctr_bytecode_t assemble(char* mnemonic, char* arg1, char* arg2, void* symbols);
+static ctr_symbol_t assemble_data(char* type, char* value);
 
 int main(int argc, char* argv[]) {
-    // usage
-    if (argc < 3) {
-        print_usage();
-        return 0;
-    }
 
-    // input
-    char* input_path = argv[1];
-    FILE* input = fopen(input_path, "r");
-    if (input == NULL) {
-        fprintf(stderr, "can not open file: %s\n", input_path);
-        return 1;
-    }
+    FILE* input = fopen(argv[1], "r");
+    FILE* output = fopen(argv[2], "wb");
 
-    // ouput
-    char* output_path = argv[2];
-    FILE* output = fopen(output_path, "wb");
-    if (output == NULL) {
-        fprintf(stderr, "can not open file: %s\n", output_path);
-        return 1;
-    }
-
-    // assembler
-    assembler(input, output);
-
-    // close file
+    // read file
+    asm_init();
+    ctr_t container = read(input);
     fclose(input);
+
+    // print
+    list_t* symbols = &container.nsymbols.list;
+    for (int i = 0; i < symbols->count; i++) {
+        map_entry_t* entry = list_get(symbols, i);
+        ctr_symbol_t* symbol = entry->value;
+        printf("%s\n", (char*)entry->key);
+        switch (symbol->type) {
+            case CTR_SYMBOL_FUNC: {
+                list_t* bytecodes = symbol->data;
+                for (int i = 0; i < bytecodes->count; i++) {
+                    ctr_bytecode_t* bytecode = list_get(bytecodes, i);
+                    printf("\t%s\n", asm_opcode2mnemonic(bytecode->instruction));
+                }
+                break;
+            }
+            case CTR_SYMBOL_INT: {
+               printf("\t%i\n", *(int32_t*)symbol->data);
+               break;
+            }
+            case CTR_SYMBOL_STR: {
+                int32_t* string = symbol->data;
+                printf("\t'");
+                for (int i = 0; i < string[0]; i++) {
+                    printf("%c", (char)string[i+1]);
+                }
+                printf("'\n");
+                break;
+            }
+        }
+    }
+    asm_release();
+
+    // write
+    //ctr_write(output, &container);
     fclose(output);
 
     return 0;
 }
 
-void print_usage() {
-    printf("usage: nas <input> <output>\n");
+static ctr_t read(FILE* file) {
+    ctr_t container;
+    ctr_init(&container);
+    void* symbols = &container.nsymbols;
+
+    int segment = SEG_DATA;
+
+    while(!feof(file)) {
+        char line[BUFFER_SIZE];
+        fgets(line, BUFFER_SIZE, file);
+        line[strlen(line) - 1] = '\0';
+
+        char first = line[0];
+        ctr_symbol_t symbol;
+
+        switch (first) {
+            case '#': break;
+            case '.': 
+                if (strcmp(line, ".data") == 0) { segment = SEG_DATA; break; }
+                if (strcmp(line, ".text") == 0) { segment = SEG_TEXT; break; }
+                fprintf(stderr, "unkown segment '%s'\n", line); break;
+            case '@': {
+                if (segment != SEG_TEXT) { fprintf(stderr, "bad line '%s'", line); continue; }
+                symbol.type = CTR_SYMBOL_FUNC;
+                symbol.data = malloc(sizeof(list_t));
+                list_init(symbol.data, sizeof(ctr_bytecode_t));
+                map_set(symbols, func_name(line), &symbol);
+                break;
+            }
+            default:
+                switch (segment) {
+                    case SEG_DATA: {
+                        char* type = strtok(line, " \t\r\b");
+                        if (!type) break;
+                        char* name = strtok(NULL, " \t\r\b");
+                        char* value = strtok(NULL, " \t\r\b");
+
+                        ctr_symbol_t symbol = assemble_data(type, value);
+                        map_set(symbols, name, &symbol);
+                        break;
+                    }
+                    case SEG_TEXT: {
+                        char* mnemonic = strtok(line, " \t\r\n");
+                        if (!mnemonic) break;
+                        char* arg1 = strtok(NULL, " \t\r\n");
+                        char* arg2 = strtok(NULL, " \t\r\n");
+                        ctr_bytecode_t bytecode = assemble(mnemonic, arg1, arg2, symbols);
+                        list_add(symbol.data, &bytecode);
+                        break;
+                    }
+                }
+        }
+    }
+
+    return container;
+}
+
+static char* func_name(char* line) {
+    return &line[1];
+}
+
+static ctr_bytecode_t assemble(char* mnemonic, char* arg1, char* arg2, void* symbols) {
+    ctr_bytecode_t bytecode;
+    bytecode.instruction = asm_mnemonic2opcode(mnemonic);
+    bytecode.argument = 0x0;
+
+    switch (bytecode.instruction) {
+        case ASM_CALLE: {
+            ctr_symbol_t symbol;
+            symbol.type = CTR_SYMBOL_EXTERN;
+            symbol.data = NULL;
+            map_set(symbols, arg1, &symbol);
+            break;
+        }
+    }
+
+    return bytecode;
+}
+
+static ctr_symbol_t assemble_data(char* type, char* value) {
+    ctr_symbol_t symbol;
+    if (strcmp(type, "integer") == 0) {
+        symbol.type = CTR_SYMBOL_INT;
+        symbol.data = malloc(sizeof(int32_t));
+        *(int32_t*)symbol.data = atoi(strtok(value, " \t\r\n"));
+        return symbol;
+    }
+
+    if (strcmp(type, "string") == 0) {
+        symbol.type = CTR_SYMBOL_STR;
+        char* str = strtok(value, " \t\r\n\"");
+        int32_t length = strlen(str);
+        symbol.data = calloc(sizeof(int32_t), length + 1);
+        int32_t* string = symbol.data;
+        string[0] = length;
+        for (int i = 0; i < length; i++) {
+            string[i + 1] = (int32_t)str[i];
+        }
+        return symbol;
+    }
+    return symbol;
 }
