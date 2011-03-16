@@ -20,6 +20,7 @@
 #define CTR_SYMBOL_STR  0x1
 #define CTR_SYMBOL_INT  0x2
 #define CTR_SYMBOL_FUNC 0x3
+#define CTR_SYMBOL_EXTERN 0x4
 
 // address type
 typedef int ctr_addr;

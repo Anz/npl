@@ -123,6 +123,12 @@ void read_text_segment(FILE* input, ctr_t* container, list_t* commands) {
             char* name = strtok(line, ": ");
             // add symbol to map
             map_set(symbols, name, &addr);
+
+            ctr_symbol_t symbol;
+            symbol.data = malloc(sizeof(list_t));
+            list_init(symbol.data, sizeof(ctr_bytecode_t));
+            symbol.type = CTR_SYMBOL_FUNC;
+            map_set(&container->nsymbols, name, &symbol);
         }
 
         if (instruction) {
@@ -143,6 +149,11 @@ void read_text_segment(FILE* input, ctr_t* container, list_t* commands) {
                     map_set(externals, key, &external_index);
                     external_index++;
                 }
+
+                ctr_symbol_t symbol;
+                symbol.data = NULL;
+                symbol.type = CTR_SYMBOL_EXTERN;
+                map_set(&container->nsymbols, key, &symbol);
             }
             list_add(commands, &command);
             addr++;

@@ -20,6 +20,8 @@ char* type_to_str(int32_t type) {
     switch (type) {
         case CTR_SYMBOL_STR: memcpy(buffer, "String", 7); break;
         case CTR_SYMBOL_INT: memcpy(buffer, "Integer", 8); break;
+        case CTR_SYMBOL_FUNC: memcpy(buffer, "Func", 5); break;
+        case CTR_SYMBOL_EXTERN: memcpy(buffer, "Extern", 7); break;
         default: memcpy(buffer, "Unkown", 7); break;
     }
     return buffer;
