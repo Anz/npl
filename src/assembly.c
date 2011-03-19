@@ -7,22 +7,10 @@ map_t assembly;
 
 void asm_init() {
     char* mnemonics[] = {
-        "nop",
-        "enter",
         "arg",
-        "argv",
+        "init",
         "call",
-        "calle",
-        "cmp",
-        "jmp",
-        "je",
-        "jne",
-        "jl",
-        "jle",
-        "jg",
-        "jge",
-        "ret",
-        "init"
+        "cmp"
     };
 
     map_init(&assembly, MAP_STR, sizeof(char));

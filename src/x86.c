@@ -31,7 +31,7 @@ static void* call_addr(void* source, void* target) {
 }
 
 static void* get_subroutine_addr(list_t* text, void* addr, int current,  int target) {
-    size_t size = 0;
+    /*size_t size = 0;
     int incrementor;
     if (current < target) {
         incrementor = 1;
@@ -44,7 +44,7 @@ static void* get_subroutine_addr(list_t* text, void* addr, int current,  int tar
     for (int i = current; i != target; i += incrementor) {
         ctr_bytecode_t* bc = list_get(text, i);
         switch(bc->instruction) {
-            case ASM_NOP:    size += 1; break;
+            /*case ASM_NOP:    size += 1; break;
             case ASM_ENTER:  size += 4; break;
             case ASM_ARG:    size += 5; break;
             case ASM_ARGV:   size += 5; break;
@@ -58,11 +58,12 @@ static void* get_subroutine_addr(list_t* text, void* addr, int current,  int tar
             case ASM_JLE:    size += 1; break;
             case ASM_JG:     size += 1; break;
             case ASM_JGE:    size += 1; break;
-            case ASM_RET:    size += 2; break;
+            case ASM_RET:    size += 2; break;*//*
             default: size += 1; break;
         }
     }
-    return addr + incrementor * (size + 1);
+    return addr + incrementor * (size + 1);*/
+    return NULL;
 }
 
 static char* write(char* buffer, int num, ...) {
@@ -78,7 +79,7 @@ static char* write(char* buffer, int num, ...) {
 arch_native_t arch_compile(ctr_t* container,  library_t* library) {
     arch_native_t native;
 
-    ctr_header_t* header = &container->header;
+/*    ctr_header_t* header = &container->header;
     map_t* symbols = &container->symbols;
     map_t* externals = &container->externals;
     list_t* texts = &container->texts;
@@ -187,7 +188,7 @@ arch_native_t arch_compile(ctr_t* container,  library_t* library) {
         }
     }
 
-    list_release(&arg_stack);
+    list_release(&arg_stack);*/
 
     return native;
 }

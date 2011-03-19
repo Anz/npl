@@ -14,36 +14,19 @@ ctr_header_t read_header(FILE* file) {
 
     // init header
     header.magic_number = swap_endian(segment[0]);
-    header.container_version = swap_endian(segment[1]); 
-    header.content_version = swap_endian(segment[2]);
-    header.symbol_size = swap_endian(segment[3]);
-    header.nsymbol_size = swap_endian(segment[4]);
-    header.external_size = swap_endian(segment[5]);
-    header.data_size = swap_endian(segment[6]);
-    header.text_size = swap_endian(segment[7]);
+    header.version = swap_endian(segment[1]); 
+    header.symbol_size = swap_endian(segment[2]);
+    header.data_size = swap_endian(segment[3]);
+    header.text_size = swap_endian(segment[4]);
 
    return header;
 }
 
 // read symbol segment
-void read_symbols(FILE* file, size_t size, map_t* symbols) {
-    for (int i = 0; i < size / CTR_SYMBOL_SIZE; i++) {
-        // read
-        char buffer[CTR_SYMBOL_SIZE];
-        fread(buffer, CTR_SYMBOL_SIZE, 1, file);
+void read_symbol(FILE* file, size_t size, ctr_t* container) {
+    long data_segment = CTR_HEADER_SIZE + container->header.symbol_size;
+    long text_segment = data_segment + container->header.data_size;
 
-        // fill data
-        ctr_addr addr = swap_endian(*(int*)buffer);
-        char name[CTR_SYMBOL_NAME_SIZE+1];
-        memcpy(name, &buffer[4], CTR_SYMBOL_NAME_SIZE);
-        name[CTR_SYMBOL_NAME_SIZE] = '\0';
-
-        map_set(symbols, name, &addr);
-    }
-}
-
-// read nsymbol segment
-void read_nsymbol(FILE* file, size_t size, ctr_t* container) {
     for (size_t i = 0; i < size; i += 4 * sizeof(int32_t)) {
         // read
         int32_t buffer[4];
@@ -60,12 +43,12 @@ void read_nsymbol(FILE* file, size_t size, ctr_t* container) {
         // create symbol
         ctr_symbol_t symbol;
         symbol.type = type;
+        symbol.data = NULL;
 
         long pointer = ftell(file);
-        long data_segment = CTR_HEADER_SIZE + container->header.symbol_size + container->header.nsymbol_size  + container->header.external_size;
-        fseek(file, data_segment + addr, SEEK_SET);
         switch (type) {
              case CTR_SYMBOL_STR: {
+                 fseek(file, data_segment + addr, SEEK_SET);
                  symbol.data = malloc(type_size + sizeof(int32_t));
                  int32_t length = type_size / sizeof(int32_t);
                  fread(symbol.data + sizeof(int32_t), type_size, 1, file);
@@ -77,62 +60,40 @@ void read_nsymbol(FILE* file, size_t size, ctr_t* container) {
                  break;
             }
             case CTR_SYMBOL_INT: {
+                 fseek(file, data_segment + addr, SEEK_SET);
                  symbol.data = malloc(type_size);
                  fread(symbol.data, 1, sizeof(int32_t), file);
                  int32_t* integer = symbol.data;
                  *integer = swap_endian(*integer);
                  break;
-            } 
+            }
+            case CTR_SYMBOL_FUNC: {
+                fseek(file, text_segment + addr, SEEK_SET);
+                list_t* bytecodes = malloc(sizeof(list_t));
+                list_init(bytecodes, sizeof(ctr_bytecode_t));
+                for (int i = 0; i < type_size / 5; i++) {
+                    char code[5];
+                    fread(code, 5, sizeof(char), file);
+                    ctr_bytecode_t bytecode;
+                    bytecode.opcode = code[0];
+                    bytecode.symbol = NULL;
+                    list_add(bytecodes, &bytecode);
+                }
+                symbol.data = bytecodes;
+                break;
+            }
         }
         fseek(file, pointer, SEEK_SET);
 
         // add symbol
-        map_set(&container->nsymbols, name, &symbol);
+        map_set(&container->symbols, name, &symbol);
     }
-}
-
-
-// read external segment
-void read_externals(FILE* file, size_t size, map_t* externals) {
-    for (int i = 0; i < size / CTR_SYMBOL_NAME_SIZE; i++) {
-        // read
-        char name[CTR_SYMBOL_NAME_SIZE+1];
-        fread(name, CTR_SYMBOL_NAME_SIZE, 1, file);
-        name[CTR_SYMBOL_NAME_SIZE+1] = '\0';
-        int index = i;
-        map_set(externals, name, &index);
-    }
-}
-
-// read data segment
-static void read_data_segment(FILE* file, size_t size) {
-    void* data = malloc(size);
-    fread(data, size, sizeof(char), file);
-}
-
-// read text segment
-void read_texts(FILE* file, size_t size, list_t* texts) {
-    for (int i = 0; i < size / CTR_BYTECODE_SIZE; i++) {
-        // read
-        char buffer[CTR_BYTECODE_SIZE];
-        fread(buffer, CTR_BYTECODE_SIZE, 1, file);
-
-        // fill data
-        ctr_bytecode_t bc;
-        bc.instruction = buffer[0];
-        bc.argument = swap_endian(*(int*)&buffer[1]);
-        
-        list_add(texts, &bc);
-   }
 }
 
 // init container
 void ctr_init(ctr_t* container) {
     container->header.data_size = 0;
-    map_init(&container->symbols, MAP_STR, sizeof(ctr_addr));
-    map_init(&container->nsymbols, MAP_STR, sizeof(ctr_symbol_t));
-    map_init(&container->externals, MAP_STR, sizeof(int));
-    list_init(&container->texts, sizeof(ctr_bytecode_t));
+    map_init(&container->symbols, MAP_STR, sizeof(ctr_symbol_t));
 }
 
 // read file
@@ -147,83 +108,78 @@ ctr_t ctr_read(FILE* file) {
         return c;
     }
 
-    read_symbols(file, c.header.symbol_size, &c.symbols);
-    read_nsymbol(file, c.header.nsymbol_size, &c);
-    read_externals(file, c.header.external_size, &c.externals);
-    read_data_segment(file, c.header.data_size);
-    read_texts(file, c.header.text_size, &c.texts);
+    read_symbol(file, c.header.symbol_size, &c);
     return c;
 }
 
 // write file
 void ctr_write(FILE* file, ctr_t* container) {
     map_t* symbols = &container->symbols;
-    map_t* nsymbols = &container->nsymbols;
-    map_t* externals = &container->externals;
-    list_t* texts = &container->texts;
 
     // write header
-    int symbol_size = symbols->list.count * CTR_SYMBOL_SIZE;
-    int nsymbol_size = 0;
-    for (int i = 0; i < nsymbols->list.count; i++) {
-        map_entry_t* entry = list_get(&nsymbols->list, i);
+    int32_t symbol_size = 0;
+    int32_t data_size = 0;
+    int32_t text_size = 0;
+    for (int i = 0; i < symbols->list.count; i++) {
+        map_entry_t* entry = list_get(&symbols->list, i);
         ctr_symbol_t* symbol = entry->value;
-        nsymbol_size += CTR_NSYMBOL_SIZE + strlen(entry->key);
+
+        symbol_size += CTR_NSYMBOL_SIZE + strlen(entry->key);
+
+        switch (symbol->type) {
+            case CTR_SYMBOL_INT: data_size += sizeof(int32_t); break;
+            case CTR_SYMBOL_STR: data_size += sizeof(int32_t) * *(int32_t*)symbol->data; break;
+            case CTR_SYMBOL_FUNC: text_size += ((list_t*)symbol->data)->count * 5; break;
+        }
     }
-    int external_size = externals->list.count * CTR_SYMBOL_NAME_SIZE;
-    int data_size = container->header.data_size;
-    int text_size = texts->count * CTR_BYTECODE_SIZE;
     unsigned int header[] = {
         swap_endian(CTR_MAGIC_NUMBER),
-        swap_endian(CTR_CONTAINER_VERSION),
-        swap_endian(CTR_BYTECODE_VERSION),
+        swap_endian(CTR_VERSION),
         swap_endian(symbol_size),
-        swap_endian(nsymbol_size),
-        swap_endian(external_size),
         swap_endian(data_size),
         swap_endian(text_size)
     };
     fwrite(header, sizeof(char), CTR_HEADER_SIZE, file);
 
     // write symbol
-    for (unsigned int i = 0; i < symbols->list.count; i++) {
-        map_entry_t* entry = list_get(&symbols->list, i);
-        ctr_addr addr = swap_endian(*(int*)entry->value);
-        fwrite(&addr, sizeof(char), CTR_ADDR_SIZE, file);
-        fwrite(entry->key, sizeof(char), CTR_SYMBOL_NAME_SIZE, file);
-    }
-
-    // write symbol
     int32_t data_index = 0;
-    for (int i = 0; i < nsymbols->list.count; i++) {
-        map_entry_t* entry = list_get(&nsymbols->list, i);
+    int32_t text_index = 0;
+    for (int i = 0; i < symbols->list.count; i++) {
+        map_entry_t* entry = list_get(&symbols->list, i);
         ctr_symbol_t* symbol = entry->value;
         int32_t size = 0;
+        int32_t addr = 0;
         switch (symbol->type) {
-            case CTR_SYMBOL_STR: size = (*(int32_t*)symbol->data) * sizeof(int32_t); break;
-            case CTR_SYMBOL_INT: size = sizeof(int32_t); break;
+            case CTR_SYMBOL_STR:
+                addr = data_index;
+                size = (*(int32_t*)symbol->data) * sizeof(int32_t);
+                data_index += size;
+                break;
+            case CTR_SYMBOL_INT:
+                addr = data_index;
+                size = sizeof(int32_t);
+                data_index += size;
+                break;
+            case CTR_SYMBOL_FUNC: 
+                addr = text_index;
+                size = ((list_t*)symbol->data)->count * 5;
+                text_index += size;
+                break;
         }
 	int32_t length = strlen(entry->key);
 	int32_t symbol_data[] = {
-            swap_endian(data_index),
+            swap_endian(addr),
             swap_endian(size),
             swap_endian(symbol->type),
             swap_endian(length)
         };
         fwrite(symbol_data, 4, sizeof(int32_t), file);
         fwrite(entry->key, length, sizeof(char), file);
-        data_index += size;
-    }
-
-    // write external symbol
-    for (unsigned int i = 0; i < externals->list.count; i++) {
-        map_entry_t* entry = list_get(&externals->list, i);
-        fwrite(entry->key, sizeof(char), CTR_SYMBOL_NAME_SIZE, file);
     }
 
     // write data
-    for (int i = 0; i < nsymbols->list.count; i++) {
-        map_entry_t* entry = list_get(&nsymbols->list, i);
+    for (int i = 0; i < symbols->list.count; i++) {
+        map_entry_t* entry = list_get(&symbols->list, i);
         ctr_symbol_t* symbol = entry->value;
         switch (symbol->type) {
             case CTR_SYMBOL_STR: {
@@ -244,22 +200,27 @@ void ctr_write(FILE* file, ctr_t* container) {
         }
     }
 
-
-
     // write text
-    for (unsigned int i = 0; i < texts->count; i++) {
-        ctr_bytecode_t* bc = list_get(texts, i);
-        fwrite(&bc->instruction, sizeof(char), 1, file);
-        int arg = swap_endian(bc->argument);
-        fwrite(&arg, sizeof(int), 1, file);
-    }
+    for (int i = 0; i < symbols->list.count; i++) {
+        map_entry_t* entry = list_get(&symbols->list, i);
+        ctr_symbol_t* symbol = entry->value;
 
+        if (symbol->type != CTR_SYMBOL_FUNC) {
+            continue;
+        }
+
+        list_t* bytecodes = symbol->data;
+        for (int i = 0; i < bytecodes->count; i++) {
+            ctr_bytecode_t* bytecode = list_get(bytecodes, i);
+
+            char instruction[] = { (char)bytecode->opcode, 0x0, 0x0, 0x0, 0x0 };
+            fwrite(instruction, 5, sizeof(char), file);
+        }
+    }
 }
 
 // release container
 void ctr_release(ctr_t* container) {
     map_release(&container->symbols);
-    map_release(&container->externals);
-    list_release(&container->texts);
 }
 

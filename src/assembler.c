@@ -12,7 +12,7 @@
 
 static ctr_t read(FILE* file);
 static char* func_name(char* line);
-static ctr_bytecode_t assemble(char* mnemonic, char* arg1, char* arg2, void* symbols);
+static ctr_bytecode_t assemble(char* mnemonic, char* line, void* symbols);
 static ctr_symbol_t assemble_data(char* type, char* value);
 
 int main(int argc, char* argv[]) {
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     fclose(input);
 
     // print
-    list_t* symbols = &container.nsymbols.list;
+    list_t* symbols = &container.symbols.list;
     for (int i = 0; i < symbols->count; i++) {
         map_entry_t* entry = list_get(symbols, i);
         ctr_symbol_t* symbol = entry->value;
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
                 list_t* bytecodes = symbol->data;
                 for (int i = 0; i < bytecodes->count; i++) {
                     ctr_bytecode_t* bytecode = list_get(bytecodes, i);
-                    printf("\t%s\n", asm_opcode2mnemonic(bytecode->instruction));
+                    printf("\t%s (%p)\n", asm_opcode2mnemonic(bytecode->opcode), bytecode->symbol);
                 }
                 break;
             }
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
     asm_release();
 
     // write
-    //ctr_write(output, &container);
+    ctr_write(output, &container);
     fclose(output);
 
     return 0;
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 static ctr_t read(FILE* file) {
     ctr_t container;
     ctr_init(&container);
-    void* symbols = &container.nsymbols;
+    void* symbols = &container.symbols;
 
     int segment = SEG_DATA;
 
@@ -108,9 +108,7 @@ static ctr_t read(FILE* file) {
                     case SEG_TEXT: {
                         char* mnemonic = strtok(line, " \t\r\n");
                         if (!mnemonic) break;
-                        char* arg1 = strtok(NULL, " \t\r\n");
-                        char* arg2 = strtok(NULL, " \t\r\n");
-                        ctr_bytecode_t bytecode = assemble(mnemonic, arg1, arg2, symbols);
+                        ctr_bytecode_t bytecode = assemble(mnemonic, line, symbols);
                         list_add(symbol.data, &bytecode);
                         break;
                     }
@@ -125,20 +123,10 @@ static char* func_name(char* line) {
     return &line[1];
 }
 
-static ctr_bytecode_t assemble(char* mnemonic, char* arg1, char* arg2, void* symbols) {
+static ctr_bytecode_t assemble(char* mnemonic, char* line, void* symbols) {
     ctr_bytecode_t bytecode;
-    bytecode.instruction = asm_mnemonic2opcode(mnemonic);
-    bytecode.argument = 0x0;
-
-    switch (bytecode.instruction) {
-        case ASM_CALLE: {
-            ctr_symbol_t symbol;
-            symbol.type = CTR_SYMBOL_EXTERN;
-            symbol.data = NULL;
-            map_set(symbols, arg1, &symbol);
-            break;
-        }
-    }
+    bytecode.opcode = asm_mnemonic2opcode(mnemonic);
+    bytecode.symbol = NULL;
 
     return bytecode;
 }

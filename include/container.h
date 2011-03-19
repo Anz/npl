@@ -7,12 +7,9 @@
 
 // constans
 #define CTR_MAGIC_NUMBER 0xAFFEAFFE
-#define CTR_CONTAINER_VERSION 1
-#define CTR_BYTECODE_VERSION 1
-#define CTR_HEADER_SIZE 32
+#define CTR_VERSION 1
+#define CTR_HEADER_SIZE 20
 #define CTR_ADDR_SIZE 4
-#define CTR_SYMBOL_NAME_SIZE 512
-#define CTR_SYMBOL_SIZE 516
 #define CTR_NSYMBOL_SIZE 16
 #define CTR_BYTECODE_SIZE 5
 
@@ -28,11 +25,8 @@ typedef int ctr_addr;
 // container header type
 typedef struct ctr_header {
     unsigned int magic_number;
-    unsigned int container_version;
-    unsigned int content_version;
+    unsigned int version;
     size_t symbol_size;
-    size_t nsymbol_size;
-    size_t external_size;
     size_t data_size;
     size_t text_size;
 } ctr_header_t;
@@ -40,10 +34,7 @@ typedef struct ctr_header {
 // container type
 typedef struct ctr {
     ctr_header_t header;
-    map_t nsymbols;
     map_t symbols;
-    map_t externals;
-    list_t texts;
 } ctr_t;
 
 // symbol
@@ -54,8 +45,8 @@ typedef struct ctr_symbol {
 
 // instruction
 typedef struct ctr_bytecode {
-    char instruction;
-    int argument;
+    char opcode;
+    ctr_symbol_t* symbol;
 } ctr_bytecode_t;
 
 // init container
