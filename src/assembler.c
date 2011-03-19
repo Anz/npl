@@ -10,7 +10,7 @@
 #define SEG_TEXT 1
 #define BUFFER_SIZE 512
 
-static ctr_t read(FILE* file);
+static map_t read(FILE* file);
 static char* func_name(char* line);
 static ctr_bytecode_t assemble(char* mnemonic, char* line, void* symbols);
 static ctr_symbol_t assemble_data(char* type, char* value);
@@ -22,13 +22,13 @@ int main(int argc, char* argv[]) {
 
     // read file
     asm_init();
-    ctr_t container = read(input);
+    map_t symbols = read(input);
     fclose(input);
 
     // print
-    list_t* symbols = &container.symbols.list;
-    for (int i = 0; i < symbols->count; i++) {
-        map_entry_t* entry = list_get(symbols, i);
+    list_t* list = &symbols.list;
+    for (int i = 0; i < list->count; i++) {
+        map_entry_t* entry = list_get(list, i);
         ctr_symbol_t* symbol = entry->value;
         printf("%s\n", (char*)entry->key);
         switch (symbol->type) {
@@ -58,16 +58,15 @@ int main(int argc, char* argv[]) {
     asm_release();
 
     // write
-    ctr_write(output, &container);
+    ctr_write(output, &symbols);
     fclose(output);
 
     return 0;
 }
 
-static ctr_t read(FILE* file) {
-    ctr_t container;
-    ctr_init(&container);
-    void* symbols = &container.symbols;
+static map_t read(FILE* file) {
+    map_t symbols;
+    map_init(&symbols, MAP_STR, sizeof(ctr_symbol_t));
 
     int segment = SEG_DATA;
 
@@ -90,7 +89,7 @@ static ctr_t read(FILE* file) {
                 symbol.type = CTR_SYMBOL_FUNC;
                 symbol.data = malloc(sizeof(list_t));
                 list_init(symbol.data, sizeof(ctr_bytecode_t));
-                map_set(symbols, func_name(line), &symbol);
+                map_set(&symbols, func_name(line), &symbol);
                 break;
             }
             default:
@@ -102,13 +101,13 @@ static ctr_t read(FILE* file) {
                         char* value = strtok(NULL, " \t\r\b");
 
                         ctr_symbol_t symbol = assemble_data(type, value);
-                        map_set(symbols, name, &symbol);
+                        map_set(&symbols, name, &symbol);
                         break;
                     }
                     case SEG_TEXT: {
                         char* mnemonic = strtok(line, " \t\r\n");
                         if (!mnemonic) break;
-                        ctr_bytecode_t bytecode = assemble(mnemonic, line, symbols);
+                        ctr_bytecode_t bytecode = assemble(mnemonic, line, &symbols);
                         list_add(symbol.data, &bytecode);
                         break;
                     }
@@ -116,7 +115,7 @@ static ctr_t read(FILE* file) {
         }
     }
 
-    return container;
+    return symbols;
 }
 
 static char* func_name(char* line) {

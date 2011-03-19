@@ -44,13 +44,14 @@ int main(int argc, char* argv[]) {
     }
 
     // read module
-    ctr_t container = ctr_read(module);
+    map_t symbols;
+    ctr_read_symbols(module, &symbols);
     fclose(module);
 
     // compile bytecode
     library_t library;
     library_init(&library);
-    arch_native_t native = arch_compile(&container, &library);
+    arch_native_t native = arch_compile(&symbols, &library);
 
     // print native code
     if (show_native_code) {

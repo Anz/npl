@@ -19,23 +19,14 @@
 #define CTR_SYMBOL_FUNC 0x3
 #define CTR_SYMBOL_EXTERN 0x4
 
-// address type
-typedef int ctr_addr;
-
 // container header type
 typedef struct ctr_header {
-    unsigned int magic_number;
-    unsigned int version;
-    size_t symbol_size;
-    size_t data_size;
-    size_t text_size;
+    int32_t magic_number;
+    int32_t version;
+    int32_t symbol_size;
+    int32_t data_size;
+    int32_t text_size;
 } ctr_header_t;
-
-// container type
-typedef struct ctr {
-    ctr_header_t header;
-    map_t symbols;
-} ctr_t;
 
 // symbol
 typedef struct ctr_symbol {
@@ -49,13 +40,11 @@ typedef struct ctr_bytecode {
     ctr_symbol_t* symbol;
 } ctr_bytecode_t;
 
-// init container
-void ctr_init(ctr_t* container);
 // read file
-ctr_t ctr_read(FILE* file);
+ctr_header_t ctr_read_header(FILE* file);
+void ctr_read_symbols(FILE* file, map_t* symbols);
+
 // write file
-void ctr_write(FILE* file, ctr_t* container);
-// release container
-void ctr_release(ctr_t* container);
+void ctr_write(FILE* file, map_t* symbols);
 
 #endif

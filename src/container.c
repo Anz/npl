@@ -4,7 +4,7 @@
 #include <string.h>
 
 // read header
-ctr_header_t read_header(FILE* file) {
+ctr_header_t ctr_read_header(FILE* file) {
     ctr_header_t header;
 
     // segment
@@ -23,9 +23,19 @@ ctr_header_t read_header(FILE* file) {
 }
 
 // read symbol segment
-void read_symbol(FILE* file, size_t size, ctr_t* container) {
-    long data_segment = CTR_HEADER_SIZE + container->header.symbol_size;
-    long text_segment = data_segment + container->header.data_size;
+void ctr_read_symbols(FILE* file, map_t* symbols) {
+    map_init(symbols, MAP_STR, sizeof(ctr_symbol_t));
+    ctr_header_t header = ctr_read_header(file);
+
+    // check magic number
+    if (header.magic_number != CTR_MAGIC_NUMBER) {
+        return;
+    }
+
+    size_t size = header.symbol_size;
+
+    long data_segment = CTR_HEADER_SIZE + header.symbol_size;
+    long text_segment = data_segment + header.data_size;
 
     for (size_t i = 0; i < size; i += 4 * sizeof(int32_t)) {
         // read
@@ -86,36 +96,12 @@ void read_symbol(FILE* file, size_t size, ctr_t* container) {
         fseek(file, pointer, SEEK_SET);
 
         // add symbol
-        map_set(&container->symbols, name, &symbol);
+        map_set(symbols, name, &symbol);
     }
-}
-
-// init container
-void ctr_init(ctr_t* container) {
-    container->header.data_size = 0;
-    map_init(&container->symbols, MAP_STR, sizeof(ctr_symbol_t));
-}
-
-// read file
-ctr_t ctr_read(FILE* file) {
-    ctr_t c;
-    ctr_init(&c);
-
-    c.header = read_header(file);
-
-    // check magic number
-    if (c.header.magic_number != CTR_MAGIC_NUMBER) {
-        return c;
-    }
-
-    read_symbol(file, c.header.symbol_size, &c);
-    return c;
 }
 
 // write file
-void ctr_write(FILE* file, ctr_t* container) {
-    map_t* symbols = &container->symbols;
-
+void ctr_write(FILE* file, map_t* symbols) {
     // write header
     int32_t symbol_size = 0;
     int32_t data_size = 0;
@@ -218,9 +204,3 @@ void ctr_write(FILE* file, ctr_t* container) {
         }
     }
 }
-
-// release container
-void ctr_release(ctr_t* container) {
-    map_release(&container->symbols);
-}
-

@@ -14,7 +14,7 @@ typedef enum modus {
 
 void print_usage();
 void print_version();
-void print_info(ctr_t* container);
+void print_info(ctr_header_t header, map_t* symbols);
 void print_all_symbols(map_t* symbols);
 void print_symbol(char* name, ctr_symbol_t* symbol);
 
@@ -67,25 +67,27 @@ int main(int argc, char* argv[]) {
     asm_init();
 
     // load container
-    ctr_t container = ctr_read(file);
+    ctr_header_t header = ctr_read_header(file);
+    map_t symbols;
+    ctr_read_symbols(file, &symbols);
     fclose(file);
 
     // check magic number
-    if (container.header.magic_number != CTR_MAGIC_NUMBER) {
+    if (header.magic_number != CTR_MAGIC_NUMBER) {
         fprintf(stderr, "magic number is not equal to 0x%X - abort\n", CTR_MAGIC_NUMBER);
         return 1;
     }
 
     switch (modus) {
         case VERSION: print_version(); break;
-        case INFO: print_info(&container); break;
-        case LIST_SYM: print_all_symbols(&container.symbols); break;
-        case SHOW_SYM: print_symbol(&arg[2], map_find_key(&container.symbols, &arg[2])); break;
+        case INFO: print_info(header, &symbols); break;
+        case LIST_SYM: print_all_symbols(&symbols); break;
+        case SHOW_SYM: print_symbol(&arg[2], map_find_key(&symbols, &arg[2])); break;
     }
     printf("\n");
 
     // release
-    ctr_release(&container);
+    map_release(&symbols);
     asm_release();
 
     return 0;
@@ -104,8 +106,7 @@ void print_version() {
     printf("NPL Disassembler\n");
 }
 
-void print_info(ctr_t* container) {
-    ctr_header_t header = container->header;
+void print_info(ctr_header_t header, map_t* symbols) {
     printf("MAGIC NUMBER\t0x%X\n", header.magic_number);
     printf("Version\t\t%u\n", header.version);
     printf("Symbol\t\t%4.2f KB (%u Bytes)\n", header.symbol_size / 1024.0, header.symbol_size);

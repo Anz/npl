@@ -76,7 +76,7 @@ static char* write(char* buffer, int num, ...) {
     return buffer + num;
 }
 
-arch_native_t arch_compile(ctr_t* container,  library_t* library) {
+arch_native_t arch_compile(map_t* symbols,  library_t* library) {
     arch_native_t native;
 
 /*    ctr_header_t* header = &container->header;
