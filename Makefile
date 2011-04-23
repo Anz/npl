@@ -12,26 +12,39 @@ NVM = ${NVM_SRC:%.c=bin/%.o}
 
 all: bin bin/nas bin/nis bin/nvm
 
+install: all
+	@cp bin/nas /usr/bin/
+	@cp bin/nis /usr/bin/
+	@cp bin/nvm /usr/bin/
+
+uninstall:
+	@rm /usr/bin/nas /usr/bin/nis /usr/bin/nvm
+
 bin: bin/lib
-	mkdir -p bin
+	@mkdir -p bin
 
 bin/lib:
-	mkdir -p bin/lib
+	@mkdir -p bin/lib
 
 bin/nas: ${NAS}
-	${CC} ${CFLAGS} -obin/nas ${NAS}
+	@echo "LD nas"
+	@${CC} ${CFLAGS} -obin/nas ${NAS}
 
 bin/nis: ${NIS}
-	${CC} ${CFLAGS} -obin/nis ${NIS}
+	@echo "LD nis"
+	@${CC} ${CFLAGS} -obin/nis ${NIS}
 
 bin/nvm: ${NVM}
-	${CC} ${CFLAGS} -obin/nvm ${NVM} -lm -lpthread
+	@echo "LD nvm"
+	@${CC} ${CFLAGS} -obin/nvm ${NVM} -lm -lpthread
 
 bin/%.o: src/%.c
-	${CC} ${CFLAGS} -o${<:src/%.c=bin/%.o} -c $<
+	@echo "CC $<"
+	@${CC} ${CFLAGS} -o${<:src/%.c=bin/%.o} -c $<
 
 bin/lib/%.o: src/lib/%.c
-	${CC} ${CFLAGS} -o${<:src/%.c=bin/%.o} -c $<
+	@echo "CC $<"
+	@${CC} ${CFLAGS} -o${<:src/%.c=bin/%.o} -c $<
 
 clean:
-	rm -rf bin
+	@rm -rf bin
